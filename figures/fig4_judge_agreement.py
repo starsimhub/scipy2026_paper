@@ -103,7 +103,7 @@ def plot_judge_agreement(df):
                 label="Claude judge", ax=ax2)
     sns.kdeplot(x=gpt_pref, fill=True, alpha=0.4, color=prov_palette["GPT"],
                 label="GPT judge", ax=ax2)
-    ax2.axvline(0, ls=":", c="0.3", lw=1.6)
+    ax2.axvline(0, ls="-", c="0.3", lw=1.6)
     # Mean self-preference for each judge, as dashed vertical lines. The two means are
     # symmetric (±2.1 pp by construction), so the legend carries a single entry.
     cm, gm = claude_pref.mean(), gpt_pref.mean()
