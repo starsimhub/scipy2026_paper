@@ -63,7 +63,7 @@ def plot_judge_agreement(df):
     arm_palette = {arm: defaults.ARM_COLORS[defaults.EXAM_ARM_MAP.get(arm, arm)]
                    for arm in wide["arm"].unique()}
 
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(13, 6))
     # Markers swapped relative to seaborn's default order (Claude → X, GPT → o).
     sns.scatterplot(
         data=wide, x=jx, y=jy, hue="arm", style="Model", palette=arm_palette,
@@ -83,33 +83,40 @@ def plot_judge_agreement(df):
     ax.set_title("(a) Judge agreement")
     sc.boxoff(ax=ax)
 
-    # ── panel (b): self-preference — score given to own-provider answers vs others ──
-    # Each judge's provider; an answer is "same provider" when its model's provider
-    # matches the judge's. A higher same-provider mean ⇒ the judge favours its own.
-    def _provider(name):
-        s = name.lower()
-        return "anthropic" if "anthropic" in s else "openai" if "openai" in s else s
+    # ── panel (b): judge self-preference (harshness-corrected), both judges overlaid ─
+    # Each judge's raw (own − other judge) gap conflates self-preference with overall
+    # lenience, so we difference-in-difference it: subtract the judge's baseline gap
+    # (its mean gap on the OTHER provider's answers, where it has no self-interest)
+    # from its per-answer gap on its own provider's answers. Both distributions are
+    # placed on a shared axis where right = "prefers Claude", left = "prefers GPT":
+    # the GPT judge's gap is sign-flipped into that orientation. Scores are in points.
+    prov_palette = {"Claude": "#4C72B0", "GPT": "#DD8452"}
 
-    friendly = {"anthropic": "Claude", "openai": "GPT"}
-    judge_col = {_provider(jx): jx, _provider(jy): jy}
-    provs = [_provider(jx), _provider(jy)]
-    same = [wide.loc[wide["model_provider"] == p, judge_col[p]].mean() for p in provs]
-    diff = [wide.loc[wide["model_provider"] != p, judge_col[p]].mean() for p in provs]
+    def _corrected(own, own_col, other_col):
+        gap = wide[own_col] - wide[other_col]
+        baseline = gap[wide["Model"] != own].mean()
+        return (gap[wide["Model"] == own] - baseline) * 100
 
-    xb = np.arange(len(provs))
-    w = 0.38
-    ax2.bar(xb - w / 2, same, w, color="#55A868", label="Same provider")
-    ax2.bar(xb + w / 2, diff, w, color="#8172B3", label="Different provider")
-    # Annotate the self-preference gap (same − different) above each judge.
-    for i, (s, d) in enumerate(zip(same, diff)):
-        ax2.annotate(f"Δ = {s - d:+.2f}", (i, max(s, d)), textcoords="offset points",
-                     xytext=(0, 6), ha="center", fontsize=9)
-    ax2.set_xticks(xb)
-    ax2.set_xticklabels([f"{friendly.get(p, p)} judge" for p in provs])
-    ax2.set_ylabel("Mean judge score")
-    ax2.set_ylim(0, 1.05)
-    ax2.set_title("(b) Self-preference")
-    ax2.legend(fontsize=8)
+    claude_pref = _corrected("Claude", jx, jy)   # + ⇒ prefers Claude
+    gpt_pref = -_corrected("GPT", jy, jx)         # flip so + ⇒ prefers Claude
+    sns.kdeplot(x=claude_pref, fill=True, alpha=0.4, color=prov_palette["Claude"],
+                label="Claude judge", ax=ax2)
+    sns.kdeplot(x=gpt_pref, fill=True, alpha=0.4, color=prov_palette["GPT"],
+                label="GPT judge", ax=ax2)
+    ax2.axvline(0, ls=":", c="0.3", lw=1.6)
+    # Mean self-preference for each judge, as dashed vertical lines. The two means are
+    # symmetric (±2.1 pp by construction), so the legend carries a single entry.
+    cm, gm = claude_pref.mean(), gpt_pref.mean()
+    ax2.axvline(cm, color=prov_palette["Claude"], ls="--", lw=1.4)
+    ax2.axvline(gm, color=prov_palette["GPT"], ls="--", lw=1.4)
+    ax2.set_xlim(-50, 50)
+    ax2.set_ylabel("Density")
+    ax2.set_xlabel("←  prefers GPT          self-preference (% points)          prefers Claude  →")
+    ax2.set_title("(b) Judge self-preference")
+    handles, labels = ax2.get_legend_handles_labels()
+    handles.append(Line2D([], [], color="0.4", ls="--", lw=1.4))
+    labels.append(f"Mean gap ({abs(cm):.1f}%)")
+    ax2.legend(handles, labels, fontsize=9, loc="upper right")
     sc.boxoff(ax=ax2)
 
     # Pull the arm colours seaborn assigned, then rebuild the legend by hand as two
