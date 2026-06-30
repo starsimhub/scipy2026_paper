@@ -14,16 +14,14 @@ import traceback
 # Figure modules to run, in order. Each exposes a ``main()`` that writes its PNG.
 FIGURE_MODULES = [
     "judge_agreement",
-    "performance_vs_cost",
     "fig3_effort_vs_score",
-    "fig4a_cost_vs_score",
     "combined_cost_vs_score",
     "fig5_utilization",
     "lost_marks",
 ]
 
 
-def main() -> None:
+def main():
     failures = []
     for name in FIGURE_MODULES:
         print(f"\n=== {name} ===")

@@ -18,10 +18,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import seaborn as sns  # noqa: E402
 
 import defaults  # noqa: E402
-from exam_common import _ANSWER_KEYS, _default_variant, _prepare, load_scores  # noqa: E402
+import utils  # noqa: E402
 
 
-def plot_judge_agreement(df) -> None:
+def plot_judge_agreement(df):
     """Scatter one judge's score against the other for every shared answer.
 
     Annotates Pearson r (agreement) and the mean signed gap (systematic bias:
@@ -37,7 +37,7 @@ def plot_judge_agreement(df) -> None:
     # Keep ``arm`` (for hue) and fill NA in index columns with a sentinel —
     # pivot_table groups on the index and silently drops rows with NaN keys
     # (e.g. baseline answers, where ``agent`` is None).
-    keys = [k for k in _ANSWER_KEYS if k in df.columns] + ["arm"]
+    keys = [k for k in utils._ANSWER_KEYS if k in df.columns] + ["arm"]
     work = df.copy()
     work[keys] = work[keys].fillna("∅")
     wide = (
@@ -90,12 +90,12 @@ def plot_judge_agreement(df) -> None:
     print(f"Wrote {out}")
 
 
-def main() -> None:
-    df = load_scores()
+def main():
+    df = utils.load_exam_scores()
     if df.empty:
         print(f"No scores found at {defaults.SCORES}. Run the eval first, then flatten logs.")
         return
-    df = _prepare(df)
+    df = utils._prepare(df)
     # The rubric figures compare *judge* scores; exclude the objective
     # ``code_execution`` scorer (judge is None — different value scale, not a
     # judge) so it doesn't break the agreement plot.
@@ -103,7 +103,7 @@ def main() -> None:
     # The per-judge agreement figure compares providers, not variants, so pin it
     # to a single variant (default notools) — otherwise the pivot would average
     # each answer across variants.
-    default = _default_variant(judges)
+    default = utils._default_variant(judges)
     base = judges[judges["judge_variant"] == default] if default else judges
     plot_judge_agreement(base)
 

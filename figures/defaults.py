@@ -36,6 +36,48 @@ VALIDATION_ANSWERS = RESULTSDIR / "validation" / "answers"
 OUTPUT_DIR = FIGURES_DIR
 
 
+# ── question taxonomy ─────────────────────────────────────────────────────────
+# Q1-Q5 measure modeling skill and are the headline; Q6 is the "canary" question
+# (reported separately, not part of the modeling total).
+MODELING_QIDS = ["q01", "q02", "q03", "q04", "q05"]
+CANARY_QID = "q06"
+ALL_QIDS = MODELING_QIDS + [CANARY_QID]
+
+
+# ── run-condition (config / arm) conventions ──────────────────────────────────
+# The current three-arm preset is noskills / skills / nudged; "full" is the
+# legacy label for the same tools as "skills" (web + plugin) from earlier runs
+# and is kept only so any old run still parses (it sorts last).
+CONFIG_ORDER = ["noskills", "skills", "nudged", "full"]
+CONFIG_COLORS = {
+    "noskills": "#4C72B0",
+    "skills": "#DD8452",
+    "nudged": "#55A868",
+    "full": "#DD8452",
+}
+# Short display names (used by fig5 / lost_marks). "full" aliases "skills".
+CONFIG_LABELS = {
+    "noskills": "No skills",
+    "skills": "Skills",
+    "nudged": "Skills + nudged",
+    "full": "Skills",
+}
+# Longer "Agent …" display names (used by fig3 and the combined cost-vs-score
+# figure, which extends these with a "chat" arm).
+ARM_LABELS = {
+    "noskills": "Agent (no skills)",
+    "skills": "Agent + skills",
+    "nudged": "Agent + skills + nudged",
+    "full": "Agent + skills",  # legacy alias for skills
+}
+# Config labels whose runs have the starsim-ai plugin/skills loaded.
+PLUGIN_CONFIGS = ["skills", "nudged", "full"]
+
+# Categorical ordering for the validation data's model / effort columns.
+MODEL_ORDER = ["haiku", "sonnet", "opus"]
+EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"]
+
+
 # ── shared per-model marker styling ───────────────────────────────────────────
 # Single source of truth for marker shape, size, edge width, line style, and draw
 # order, so ``fig3_effort_vs_score`` and ``combined_cost_vs_score`` stay visually
@@ -47,8 +89,10 @@ OUTPUT_DIR = FIGURES_DIR
 # may pass its own ``scale`` so the two plots can share ratios while differing in
 # absolute size.
 
-# Draw / legend order: gpt models first, then anthropic small → large.
-MODEL_ORDER = ["gpt-mini", "gpt-5.5", "haiku", "sonnet", "opus"]
+# Marker draw / legend order: gpt models first, then anthropic small → large.
+# (Distinct from MODEL_ORDER above, which is the 3-model validation categorical
+# order; this set includes the gpt models that appear in the combined figure.)
+MODEL_MARKER_ORDER = ["gpt-mini", "gpt-5.5", "haiku", "sonnet", "opus"]
 
 # Marker shape per model: mathtext glyphs for sonnet/opus (so they take the
 # series colour), a 3-spoked star for haiku, open circle/square for the gpts.
@@ -76,6 +120,6 @@ MARKER_EDGEWIDTH = {"haiku": 1.8, "sonnet": 0.5, "opus": 0.5, "gpt-mini": 1.6, "
 MARKER_DIAMETER = {"haiku": 12.86, "sonnet": 11.5, "opus": 16.0, "gpt-mini": 8.78, "gpt-5.5": 8.78}
 
 
-def marker_area(model: str, scale: float = 1.0) -> float:
+def marker_area(model, scale=1.0):
     """``scatter`` size (pt^2) for ``model``: ``(diameter * scale)`` squared."""
     return (MARKER_DIAMETER[model] * scale) ** 2

@@ -14,8 +14,6 @@ read data via :mod:`defaults` and write the figure alongside this script.
 Run: ``python figures/fig3_effort_vs_score.py``
 """
 
-from __future__ import annotations
-
 import matplotlib
 import numpy as np
 import sciris as sc
@@ -25,7 +23,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
 import defaults  # noqa: E402
-import validation_common as C  # noqa: E402
+import utils  # noqa: E402
 
 # Effort levels shown on the x-axis. Capped at "high" (the swept runs top out
 # there); xhigh/max are dropped rather than left as empty ticks.
@@ -38,17 +36,17 @@ MODEL_DX = {"sonnet": -0.08, "opus": +0.08}
 CONFIG_FINE = 0.04
 
 
-def main() -> None:
+def main():
     # Per-arm aggregate (mean over reps); one point per (model, config, effort)
     # with [min, max] whiskers over the reps, so a swept line is monotone in
     # effort rather than zig-zagging through the duplicate x-positions.
-    rt = C.run_totals_agg()
+    rt = utils.run_totals_agg()
     rt = rt[rt.model.isin(["sonnet", "opus"])]
     rt = rt[rt.effort.isin(EFFORT_AXIS)]
 
     x_index = {e: i for i, e in enumerate(EFFORT_AXIS)}
     # Centre the per-arm fine offsets on 0 so the group stays centred on its tick.
-    configs = C.present_configs(rt)
+    configs = utils.present_configs(rt)
     config_dx = {c: (i - (len(configs) - 1) / 2) * CONFIG_FINE for i, c in enumerate(configs)}
 
     fig, ax = plt.subplots(figsize=(8.5, 6))
@@ -60,7 +58,7 @@ def main() -> None:
         # Asymmetric whiskers spanning the rep-to-rep [min, max] range.
         yerr = np.vstack([ys - g["modeling_pct_min"].to_numpy(),
                           g["modeling_pct_max"].to_numpy() - ys])
-        color = C.CONFIG_COLORS[config]
+        color = defaults.CONFIG_COLORS[config]
         # Connecting line drawn separately and faintly, so it guides the eye
         # between effort levels without competing with the markers.
         ax.plot(xs, ys, linestyle=defaults.MODEL_LINESTYLE[model], color=color,
@@ -96,9 +94,9 @@ def main() -> None:
 
     # Two compact legends: colour = config, style/marker = model.
     config_handles = [
-        Line2D([], [], marker="o", linestyle="none", color=C.CONFIG_COLORS[c],
-               markersize=9, label=C.ARM_LABELS[c])
-        for c in C.present_configs(rt)
+        Line2D([], [], marker="o", linestyle="none", color=defaults.CONFIG_COLORS[c],
+               markersize=9, label=defaults.ARM_LABELS[c])
+        for c in utils.present_configs(rt)
     ]
     model_handles = [
         Line2D([], [], color="0.3", linestyle="none", marker=defaults.MARKERS[m],
@@ -111,7 +109,7 @@ def main() -> None:
               labelspacing=1.0, handletextpad=0.8, borderpad=0.8)
 
     fig.tight_layout()
-    out = C.RESULTS_DIR / "fig3_effort_vs_score.png"
+    out = utils.RESULTS_DIR / "fig3_effort_vs_score.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")

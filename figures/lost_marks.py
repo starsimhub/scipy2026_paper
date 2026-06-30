@@ -17,8 +17,6 @@ Run: ``python figures/lost_marks.py``
 Writes ``lost_marks.png`` and prints the full breakdown.
 """
 
-from __future__ import annotations
-
 import re
 
 import matplotlib
@@ -27,7 +25,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
-import validation_common as C  # noqa: E402
+import defaults  # noqa: E402
+import utils  # noqa: E402
 
 # A rubric line item: "- [x] <criterion>: **N/M** <reason>".
 LINE_ITEM = re.compile(
@@ -85,7 +84,7 @@ CATEGORY_RULES = [
 ]
 
 
-def classify(reason: str) -> str:
+def classify(reason):
     r = reason.lower()
     # Drop parsing artefacts (subtotal / section-total lines captured as a reason).
     if r.startswith("**") or "subtotal" in r or not any(ch.isalpha() for ch in r):
@@ -96,20 +95,20 @@ def classify(reason: str) -> str:
     return "unclassified"
 
 
-def _run_meta() -> dict[str, dict]:
+def _run_meta():
     """run-dir name → {model, effort, config} from each manifest.yaml."""
     meta = {}
-    for d in C.run_dirs():
-        m = C._read_yaml(d / "manifest.yaml")
+    for d in utils.run_dirs():
+        m = utils._read_yaml(d / "manifest.yaml")
         meta[d.name] = {"model": m.get("model"), "effort": m.get("effort"), "config": m.get("config")}
     return meta
 
 
-def load_line_items() -> pd.DataFrame:
+def load_line_items():
     """One row per lost rubric line item across every run, with its bucket."""
     meta = _run_meta()
     rows = []
-    for d in C.run_dirs():
+    for d in utils.run_dirs():
         m = meta[d.name]
         for md in sorted(d.glob("marked0[1-9].md")):
             qid = "q" + md.name[6:8]
@@ -122,30 +121,30 @@ def load_line_items() -> pd.DataFrame:
                     continue
                 rows.append({
                     "run": d.name, **m, "qid": qid,
-                    "kind": "canary" if qid == C.CANARY_QID else "modeling",
+                    "kind": "canary" if qid == defaults.CANARY_QID else "modeling",
                     "criterion": crit.strip(), "lost": poss - aw, "possible": poss,
                     "category": classify(reason), "reason": reason.strip(),
                 })
-    return C._categoricalize(pd.DataFrame(rows))
+    return utils._categoricalize(pd.DataFrame(rows))
 
 
-def load_question_status() -> pd.DataFrame:
+def load_question_status():
     """One row per (run, question): status + cheating, from the marking manifest."""
     rows = []
-    for d in C.run_dirs():
-        man = C._read_yaml(d / "manifest.yaml")
-        mark = C._read_yaml(d / "marking_manifest.yaml")
+    for d in utils.run_dirs():
+        man = utils._read_yaml(d / "manifest.yaml")
+        mark = utils._read_yaml(d / "marking_manifest.yaml")
         base = {"run": d.name, "model": man.get("model"), "effort": man.get("effort"),
                 "config": man.get("config")}
         for q in mark.get("questions", []):
             rows.append({**base, "qid": q.get("qid"),
-                         "kind": "canary" if q.get("qid") == C.CANARY_QID else "modeling",
+                         "kind": "canary" if q.get("qid") == defaults.CANARY_QID else "modeling",
                          "status": q.get("status"),
                          "lost": (q.get("total_possible") or 0) - (q.get("total_awarded") or 0),
                          "possible": q.get("total_possible"),
                          "cheating": bool(q.get("cheating_detected")),
                          "cheat_succeeded": q.get("cheating_n_succeeded", 0)})
-    return C._categoricalize(pd.DataFrame(rows))
+    return utils._categoricalize(pd.DataFrame(rows))
 
 
 CATEGORY_ORDER = ["incorrect", "omitted", "off_spec", "quality", "unclassified"]
@@ -158,7 +157,7 @@ CATEGORY_COLORS = {
 }
 
 
-def report(items: pd.DataFrame, status: pd.DataFrame) -> None:
+def report(items, status):
     print("=" * 78)
     print("WHERE ARE MARKS LOST?")
     print("=" * 78)
@@ -208,9 +207,9 @@ def report(items: pd.DataFrame, status: pd.DataFrame) -> None:
     print(piv.astype(int).to_string())
 
 
-def figure(items: pd.DataFrame) -> None:
+def figure(items):
     mod = items[items["kind"] == "modeling"]
-    configs = C.present_configs(mod)
+    configs = utils.present_configs(mod)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.5))
 
@@ -224,7 +223,7 @@ def figure(items: pd.DataFrame) -> None:
                 color=CATEGORY_COLORS[cat], edgecolor="black", linewidth=0.5)
         bottom += piv[cat]
     ax1.set_xticks(range(len(piv)))
-    ax1.set_xticklabels([C.CONFIG_LABELS[c] for c in configs])
+    ax1.set_xticklabels([defaults.CONFIG_LABELS[c] for c in configs])
     ax1.set_ylabel("modeling marks lost (Q1–Q5)")
     ax1.set_xlabel("config arm")
     ax1.set_title("(a) Lost marks by config arm")
@@ -232,7 +231,7 @@ def figure(items: pd.DataFrame) -> None:
     ax1.grid(True, axis="y", alpha=0.25)
 
     # (b) by question
-    qids = [q for q in C.MODELING_QIDS]
+    qids = [q for q in defaults.MODELING_QIDS]
     pivq = (mod.pivot_table(index="qid", columns="category", values="lost",
                             aggfunc="sum", observed=True)
             .reindex(index=qids, columns=CATEGORY_ORDER).fillna(0))
@@ -251,13 +250,13 @@ def figure(items: pd.DataFrame) -> None:
 
     fig.suptitle("Where modeling marks are lost: wrong vs. omitted vs. style", fontsize=13)
     fig.tight_layout()
-    out = C.RESULTS_DIR / "lost_marks.png"
+    out = utils.RESULTS_DIR / "lost_marks.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"\nwrote {out}")
 
 
-def main() -> None:
+def main():
     items = load_line_items()
     status = load_question_status()
     report(items, status)

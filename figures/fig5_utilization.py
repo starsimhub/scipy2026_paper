@@ -20,8 +20,6 @@ figure alongside this script.
 Run: ``python figures/fig5_utilization.py``
 """
 
-from __future__ import annotations
-
 import re
 from collections import Counter
 
@@ -32,7 +30,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-import validation_common as C  # noqa: E402
+import defaults  # noqa: E402
+import utils  # noqa: E402
 
 # A Skill tool call in the transcript: the ``TOOL_USE · Skill`` marker followed by
 # its JSON payload, from which we pull the ``"skill": "<name>"`` field.
@@ -41,11 +40,11 @@ SKILL_RE = re.compile(r'TOOL_USE · Skill\s*\n\s*\{[^}]*?"skill":\s*"([^"]+)"', 
 ANSWER_LOG_RE = re.compile(r"answer(\d+)\.log$")
 
 
-def load_skill_invocations() -> pd.DataFrame:
+def load_skill_invocations():
     """One row per skill invocation across every run: (run, config, qid, skill)."""
     rows = []
-    for d in C.run_dirs():
-        manifest = C._read_yaml(d / "manifest.yaml")
+    for d in utils.run_dirs():
+        manifest = utils._read_yaml(d / "manifest.yaml")
         config = manifest.get("config")
         for log_path in sorted(d.glob("answer*.log")):
             m = ANSWER_LOG_RE.search(log_path.name)
@@ -67,7 +66,7 @@ def load_skill_invocations() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["run", "model", "effort", "config", "qid", "skill"])
 
 
-def skill_utilization(full: pd.DataFrame, n_runs: int, relevant: set | None = None) -> pd.DataFrame:
+def skill_utilization(full, n_runs, relevant=None):
     """Per-question utilization of the relevant skills.
 
     Returns one row per question with the realized/potential counts and the
@@ -90,7 +89,7 @@ def skill_utilization(full: pd.DataFrame, n_runs: int, relevant: set | None = No
         pair = pair.set_index(["qid", "skill"]).reindex(idx, fill_value=0).reset_index()
 
     rows = []
-    for qid in C.ALL_QIDS:
+    for qid in defaults.ALL_QIDS:
         sub = pair[pair["qid"] == qid]
         n_relevant = len(sub)
         realized = int(sub["runs_used"].sum())
@@ -107,7 +106,7 @@ def skill_utilization(full: pd.DataFrame, n_runs: int, relevant: set | None = No
     return pd.DataFrame(rows)
 
 
-def main() -> None:
+def main():
     inv = load_skill_invocations()
 
     # Only starsim-ai skills are of interest; filter to be explicit.
@@ -120,11 +119,11 @@ def main() -> None:
     # Number of runs per config, taken from the manifests so a plugin-enabled run
     # that happened to invoke zero skills still counts in the denominator.
     runs_per_config = Counter(
-        C._read_yaml(d / "manifest.yaml").get("config") for d in C.run_dirs()
+        utils._read_yaml(d / "manifest.yaml").get("config") for d in utils.run_dirs()
     )
 
     # Organic plugin runs: skills loaded, no prompt steer (configs "skills"/"full").
-    organic_cfgs = [c for c in C.PLUGIN_CONFIGS if c != "nudged" and runs_per_config.get(c, 0)]
+    organic_cfgs = [c for c in defaults.PLUGIN_CONFIGS if c != "nudged" and runs_per_config.get(c, 0)]
     organic = inv[inv["config"].isin(organic_cfgs)]
     n_organic_runs = sum(runs_per_config.get(c, 0) for c in organic_cfgs)
 
@@ -151,7 +150,7 @@ def main() -> None:
     util_arms = [a for a in ("skills", "nudged") if a in arm_util]
     util_by_qid = {a: arm_util[a][0].set_index("qid") for a in util_arms}
     # Questions with nonzero potential in at least one arm, in canonical order.
-    qids = [q for q in C.ALL_QIDS
+    qids = [q for q in defaults.ALL_QIDS
             if any(util_by_qid[a].loc[q, "potential"] for a in util_arms)]
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -162,10 +161,10 @@ def main() -> None:
     for i, a in enumerate(util_arms):
         ub = util_by_qid[a]
         pct = [100 * ub.loc[q, "utilization"] if ub.loc[q, "potential"] else 0 for q in qids]
-        ax.bar(x + offsets[i], pct, width, color=C.CONFIG_COLORS[a], edgecolor="black",
-               label=f"{C.CONFIG_LABELS[a]} — overall {100 * arm_util[a][1]:.0f}%")
+        ax.bar(x + offsets[i], pct, width, color=defaults.CONFIG_COLORS[a], edgecolor="black",
+               label=f"{defaults.CONFIG_LABELS[a]} — overall {100 * arm_util[a][1]:.0f}%")
         # Per-arm overall reference line in the same colour.
-        ax.axhline(100 * arm_util[a][1], color=C.CONFIG_COLORS[a], linestyle="--",
+        ax.axhline(100 * arm_util[a][1], color=defaults.CONFIG_COLORS[a], linestyle="--",
                    linewidth=1.2, alpha=0.8)
         for xi, q in zip(x + offsets[i], qids):
             r = ub.loc[q]
@@ -183,7 +182,7 @@ def main() -> None:
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend(loc="upper left", fontsize=9, title="arm")
     fig.tight_layout()
-    out = C.RESULTS_DIR / "fig5_skill_utilization.png"
+    out = utils.RESULTS_DIR / "fig5_skill_utilization.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")

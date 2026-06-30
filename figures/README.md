@@ -18,20 +18,20 @@ and `validation/answers/` (Group B). Figures are written next to the scripts
 
 ## Scripts
 
-Group A — inspect-ai exam (`scores.jsonl`); shared helpers in `exam_common.py`:
+All data loaders live in `utils.py` (Group A reads `scores.jsonl`; Group B reads
+`validation/answers/`); shared config and plotting style live in `defaults.py`.
+
+Group A — inspect-ai exam (`scores.jsonl`):
 
 | Script | Output |
 | --- | --- |
 | `judge_agreement.py` | `judge_agreement.png` |
-| `performance_vs_cost.py` | `performance_vs_cost.png` |
 
-Group B — validation runs (`validation/answers/`); shared loader in
-`validation_common.py`:
+Group B — validation runs (`validation/answers/`):
 
 | Script | Output |
 | --- | --- |
 | `fig3_effort_vs_score.py` | `fig3_effort_vs_score.png` |
-| `fig4a_cost_vs_score.py` | `fig4a_cost_vs_score.png` |
 | `fig5_utilization.py` | `fig5_skill_utilization.png` |
 | `lost_marks.py` | `lost_marks.png` |
 
