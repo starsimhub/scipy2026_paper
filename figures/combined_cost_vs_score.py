@@ -38,7 +38,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
-import marker_style as M  # noqa: E402
+import defaults  # noqa: E402
 import validation_common as C  # noqa: E402
 from exam_common import (  # noqa: E402
     _ANSWER_KEYS,
@@ -69,7 +69,7 @@ EXAM_MODEL_MAP = {
 # Map exam arms onto the unified arm vocabulary (baseline becomes the new "chat").
 EXAM_ARM_MAP = {"baseline": "chat", "agent": "noskills", "agent+skills": "skills"}
 
-# Marker shape / size / edge width come from the shared marker_style module
+# Marker shape / size / edge width come from the shared defaults module
 # (sonnet/opus glyphs, haiku star, gpt open circle/square). This figure's scatter
 # markers are drawn a touch smaller than fig3's; SCALE keeps the same ratios.
 MARKER_SCALE = 0.948
@@ -163,14 +163,14 @@ def plot_combined(points: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(9, 6.5))
     for (model, arm), g in points.groupby(["model", "arm"]):
         color = ARM_COLORS.get(arm, "0.5")
-        size = M.area(model, MARKER_SCALE)
-        marker = M.MARKERS[model]
-        open_ = model in M.OPEN_MARKERS
+        size = defaults.marker_area(model, MARKER_SCALE)
+        marker = defaults.MARKERS[model]
+        open_ = model in defaults.OPEN_MARKERS
         # Faint half-size raw points behind, plus an opaque full-size group mean.
         raw = dict(marker=marker, alpha=0.2, zorder=2)
         mean = dict(marker=marker, alpha=1.0, zorder=3)
         mx, my = g["cost"].mean(), g["score_pct"].mean()
-        lw = M.MARKER_EDGEWIDTH[model]
+        lw = defaults.MARKER_EDGEWIDTH[model]
         if open_:
             ax.scatter(g["cost"], g["score_pct"], s=size / 2, facecolors="none",
                        edgecolors=color, linewidths=lw, **raw)
@@ -199,11 +199,11 @@ def plot_combined(points: pd.DataFrame) -> None:
         for a in ARM_ORDER if a in present_arms
     ]
     model_handles = [
-        Line2D([], [], marker=M.MARKERS[m], linestyle="none", color="0.3",
-               markerfacecolor=("none" if m in M.OPEN_MARKERS else "0.3"),
-               markeredgewidth=M.MARKER_EDGEWIDTH[m],
-               markersize=M.MARKER_DIAMETER[m] * MARKER_SCALE, label=m)
-        for m in M.MODEL_ORDER if m in present_models
+        Line2D([], [], marker=defaults.MARKERS[m], linestyle="none", color="0.3",
+               markerfacecolor=("none" if m in defaults.OPEN_MARKERS else "0.3"),
+               markeredgewidth=defaults.MARKER_EDGEWIDTH[m],
+               markersize=defaults.MARKER_DIAMETER[m] * MARKER_SCALE, label=m)
+        for m in defaults.MODEL_ORDER if m in present_models
     ]
     leg1 = ax.legend(handles=arm_handles, title="Configuration", loc="lower right", fontsize=8)
     ax.add_artist(leg1)

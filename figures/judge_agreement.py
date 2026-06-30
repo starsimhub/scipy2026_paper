@@ -62,20 +62,16 @@ def plot_judge_agreement(df) -> None:
         data=wide, x=jx, y=jy, hue="arm", style="Model",
         markers={"Claude": "X", "GPT": "o"}, alpha=0.6, ax=ax,
     )
-    ax.plot([0, 1], [0, 1], ls="--", c="gray", lw=1, label="Perfect agreement")
+    ax.plot([0, 1], [0, 1], ls=":", c="0.3", lw=1.6, label="Perfect agreement")
 
-    # Thin black line of best fit, labelled with slope and R².
+    # Thin black line of best fit, labelled with slope and R² in the legend.
     import numpy as np
 
     slope, intercept = np.polyfit(wide[jx], wide[jy], 1)
     r2 = wide[jx].corr(wide[jy]) ** 2
     xfit = np.array([0, 1])
-    ax.plot(xfit, slope * xfit + intercept, c="black", lw=1, zorder=5)
-    # Square axes with equal data ranges, so the data slope equals the visual angle.
-    xm = 0.65
-    ax.text(xm, slope * xm + intercept, f"  slope = {slope:.2f}, $R^2$ = {r2:.2f}",
-            rotation=np.degrees(np.arctan(slope)), rotation_mode="anchor",
-            ha="left", va="bottom", fontsize=8)
+    ax.plot(xfit, slope * xfit + intercept, c="black", lw=1, zorder=5,
+            label=f"Best fit (slope = {slope:.2f}, $R^2$ = {r2:.2f})")
 
     ax.set(xlim=(-0.02, 1.02), ylim=(-0.02, 1.02))
     ax.set_xlabel(f"{jx.capitalize()} judge score")
