@@ -23,6 +23,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import sciris as sc
 
@@ -230,34 +231,58 @@ def figure(items, status):
     mod = items[items["kind"] == "modeling"].copy()
     mod["display"] = mod["category"].map(DISPLAY_FROM_CATEGORY)
     configs = utils.present_configs(mod)
+    models = [m for m in defaults.MODEL_ORDER if m in set(mod["model"])]
 
-    # Total available modeling marks per config (the denominator): sum of every
-    # modeling question's total_possible over that config's runs.
+    # Total available modeling marks per (config, model) — the denominator: sum of
+    # every modeling question's total_possible over that config+model's runs.
     smod = status[status["kind"] == "modeling"]
-    avail = smod.groupby("config", observed=True)["possible"].sum()
+    avail = smod.groupby(["config", "model"], observed=True)["possible"].sum()
 
-    fig, ax = plt.subplots(figsize=(8, 5.5))
-
-    # Marks lost per (config, display category), as a % of available marks.
-    piv = (mod.pivot_table(index="config", columns="display", values="lost",
+    # Lost marks per (config, model, display category), as a % of available marks.
+    piv = (mod.pivot_table(index=["config", "model"], columns="display", values="lost",
                            aggfunc="sum", observed=True)
-           .reindex(index=configs, columns=DISPLAY_ORDER).fillna(0))
-    pct = piv.div([avail.get(c, float("nan")) for c in configs], axis=0) * 100
-    bottom = pd.Series(0.0, index=pct.index)
-    for cat in DISPLAY_ORDER:
-        ax.bar(range(len(pct)), pct[cat], bottom=bottom, label=DISPLAY_LABELS[cat],
-               color=DISPLAY_COLORS[cat])
-        bottom += pct[cat]
-    ax.set_xticks(range(len(pct)))
-    ax.set_xticklabels([defaults.CONFIG_LABELS[c] for c in configs])
+           .reindex(columns=DISPLAY_ORDER).fillna(0))
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    n = len(configs)
+    slot = 0.8 / n
+    width = slot * 0.9  # leave a small gap between adjacent bars
+    offsets = (np.arange(n) - (n - 1) / 2) * slot
+    for j, c in enumerate(configs):
+        bottom = np.zeros(len(models))
+        xs = np.arange(len(models)) + offsets[j]
+        for cat in DISPLAY_ORDER:
+            vals = np.array([
+                100 * piv.loc[(c, m), cat] / avail.get((c, m), float("nan"))
+                if (c, m) in piv.index else 0.0
+                for m in models
+            ])
+            ax.bar(xs, vals, width, bottom=bottom, color=DISPLAY_COLORS[cat],
+                   label=DISPLAY_LABELS[cat] if j == 0 else None)
+            bottom += vals
+
+    # Two tick rows: configuration under each bar, model centred under each group.
+    trans = ax.get_xaxis_transform()
+    model_labels = {"haiku": "Haiku", "sonnet": "Sonnet", "opus": "Opus"}
+    ax.set_xticks([])
+    # Local short labels for the inner (configuration) tick row; "nudged" is
+    # shortened to just "Nudged" here to fit the grouped bars.
+    cfg_short = {**defaults.CONFIG_LABELS, "nudged": "Nudged"}
+    for j, c in enumerate(configs):
+        for i in range(len(models)):
+            ax.text(i + offsets[j], -0.02, cfg_short[c], transform=trans,
+                    ha="center", va="top", fontsize=8)
+    for i, m in enumerate(models):
+        ax.text(i, -0.10, model_labels.get(m, m), transform=trans,
+                ha="center", va="top", fontsize=11)
+
     ax.set_ylabel("Marks lost (% of total)")
-    ax.set_xlabel("Configuration")
     ax.set_title("Lost marks", fontsize=13)
     ax.legend(fontsize=8, title="Reason")
     ax.grid(True, axis="y", alpha=0.25)
     sc.boxoff(ax=ax)
 
-    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.16)
     out = utils.RESULTS_DIR / "fig3_lost_marks.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)

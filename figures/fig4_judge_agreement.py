@@ -63,7 +63,7 @@ def plot_judge_agreement(df):
     arm_palette = {arm: defaults.ARM_COLORS[defaults.EXAM_ARM_MAP.get(arm, arm)]
                    for arm in wide["arm"].unique()}
 
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12, 6))
     # Markers swapped relative to seaborn's default order (Claude → X, GPT → o).
     sns.scatterplot(
         data=wide, x=jx, y=jy, hue="arm", style="Model", palette=arm_palette,
@@ -80,8 +80,37 @@ def plot_judge_agreement(df):
     ax.set(xlim=(-0.02, 1.02), ylim=(-0.02, 1.02))
     ax.set_xlabel(f"{jx.capitalize()} judge score")
     ax.set_ylabel("OpenAI judge score")
-    ax.set_title("Judge self-preference")
+    ax.set_title("(a) Judge agreement")
     sc.boxoff(ax=ax)
+
+    # ── panel (b): self-preference — score given to own-provider answers vs others ──
+    # Each judge's provider; an answer is "same provider" when its model's provider
+    # matches the judge's. A higher same-provider mean ⇒ the judge favours its own.
+    def _provider(name):
+        s = name.lower()
+        return "anthropic" if "anthropic" in s else "openai" if "openai" in s else s
+
+    friendly = {"anthropic": "Claude", "openai": "GPT"}
+    judge_col = {_provider(jx): jx, _provider(jy): jy}
+    provs = [_provider(jx), _provider(jy)]
+    same = [wide.loc[wide["model_provider"] == p, judge_col[p]].mean() for p in provs]
+    diff = [wide.loc[wide["model_provider"] != p, judge_col[p]].mean() for p in provs]
+
+    xb = np.arange(len(provs))
+    w = 0.38
+    ax2.bar(xb - w / 2, same, w, color="#55A868", label="Same provider")
+    ax2.bar(xb + w / 2, diff, w, color="#8172B3", label="Different provider")
+    # Annotate the self-preference gap (same − different) above each judge.
+    for i, (s, d) in enumerate(zip(same, diff)):
+        ax2.annotate(f"Δ = {s - d:+.2f}", (i, max(s, d)), textcoords="offset points",
+                     xytext=(0, 6), ha="center", fontsize=9)
+    ax2.set_xticks(xb)
+    ax2.set_xticklabels([f"{friendly.get(p, p)} judge" for p in provs])
+    ax2.set_ylabel("Mean judge score")
+    ax2.set_ylim(0, 1.05)
+    ax2.set_title("(b) Self-preference")
+    ax2.legend(fontsize=8)
+    sc.boxoff(ax=ax2)
 
     # Pull the arm colours seaborn assigned, then rebuild the legend by hand as two
     # blocks (Configuration / Model) with bold titles. Configuration entries are
