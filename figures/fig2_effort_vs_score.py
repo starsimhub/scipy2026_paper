@@ -19,11 +19,11 @@ import numpy as np
 import sciris as sc
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-import defaults  # noqa: E402
-import utils  # noqa: E402
+import defaults
+import utils
 
 # Effort levels shown on the x-axis. Capped at "high" (the swept runs top out
 # there); xhigh/max are dropped rather than left as empty ticks.

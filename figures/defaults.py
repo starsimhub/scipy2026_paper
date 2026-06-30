@@ -14,11 +14,40 @@ the figures consume; ``OUTPUT_DIR`` is where the generated PNGs are written
 (alongside these scripts).
 """
 
+import importlib.util
+
+import matplotlib
+import matplotlib.font_manager as fm
 from pathlib import Path
 
 # This ``figures/`` directory, and the paper repo root one level up.
 FIGURES_DIR = Path(__file__).resolve().parent
 REPO_ROOT = FIGURES_DIR.parent
+
+
+def _load_starsim_font(name="Mulish"):
+    """Register Starsim's bundled Mulish font and make it the default for all figures.
+
+    Mulish is Starsim's default plotting font; the .ttf files ship in the
+    ``starsim/assets`` folder. We locate that folder via ``find_spec`` (which does
+    not execute Starsim, so its own plotting style is left untouched), register the
+    fonts with Matplotlib, and set ``font.family`` so every figure picks it up.
+    Silently no-ops if Starsim or the font is unavailable.
+    """
+    spec = importlib.util.find_spec("starsim")
+    if spec is None or not spec.origin:
+        return
+    assets = Path(spec.origin).parent / "assets"
+    for ttf in assets.glob(f"{name}-*.ttf"):
+        fm.fontManager.addfont(str(ttf))
+    try:
+        fm.findfont(name, fallback_to_default=False)
+        matplotlib.rcParams["font.family"] = name
+    except Exception:
+        pass
+
+
+_load_starsim_font()
 
 # The companion exam repo, as a sibling of this paper repo. Kept as the literal
 # ``../scipy2026_starsim_exam`` (resolved against the repo root) so the location
@@ -62,13 +91,26 @@ CONFIG_LABELS = {
     "nudged": "Skills + nudged",
     "full": "Skills",
 }
-# Longer "Agent …" display names (used by fig3 and the combined cost-vs-score
-# figure, which extends these with a "chat" arm).
+# Longer "Agent …" display names. "chat" is the inspect-ai exam's bare-chat arm
+# (no agent); the rest are the validation configs.
 ARM_LABELS = {
+    "chat": "Chat only",
     "noskills": "Agent (no skills)",
     "skills": "Agent + skills",
     "nudged": "Agent + skills + nudged",
     "full": "Agent + skills",  # legacy alias for skills
+}
+
+# Inspect-ai exam arm names → the unified config/arm vocabulary above.
+EXAM_ARM_MAP = {"baseline": "chat", "agent": "noskills", "agent+skills": "skills"}
+
+# Colour per arm: "chat" is black; the validation configs reuse CONFIG_COLORS.
+ARM_COLORS = {
+    "chat": "black",
+    "noskills": CONFIG_COLORS["noskills"],
+    "skills": CONFIG_COLORS["skills"],
+    "nudged": CONFIG_COLORS["nudged"],
+    "full": CONFIG_COLORS["full"],
 }
 # Config labels whose runs have the starsim-ai plugin/skills loaded.
 PLUGIN_CONFIGS = ["skills", "nudged", "full"]

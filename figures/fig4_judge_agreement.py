@@ -11,14 +11,16 @@ Run: ``python figures/fig4_judge_agreement.py``
 """
 
 import matplotlib
+import numpy as np
 import sciris as sc
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import seaborn as sns  # noqa: E402
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.lines import Line2D
 
-import defaults  # noqa: E402
-import utils  # noqa: E402
+import defaults
+import utils
 
 
 def plot_judge_agreement(df):
@@ -56,33 +58,63 @@ def plot_judge_agreement(df):
     # Friendly provider names for the "Model" legend.
     wide["Model"] = wide["model_provider"].replace({"anthropic": "Claude", "openai": "GPT"})
 
+    # Canonical arm colours (keyed by raw exam arm name via EXAM_ARM_MAP):
+    # chat → black, no skills → blue, skills → orange, nudged → green.
+    arm_palette = {arm: defaults.ARM_COLORS[defaults.EXAM_ARM_MAP.get(arm, arm)]
+                   for arm in wide["arm"].unique()}
+
     fig, ax = plt.subplots(figsize=(6, 6))
     # Markers swapped relative to seaborn's default order (Claude → X, GPT → o).
     sns.scatterplot(
-        data=wide, x=jx, y=jy, hue="arm", style="Model",
+        data=wide, x=jx, y=jy, hue="arm", style="Model", palette=arm_palette,
         markers={"Claude": "X", "GPT": "o"}, alpha=0.6, ax=ax,
     )
-    ax.plot([0, 1], [0, 1], ls=":", c="0.3", lw=1.6, label="Perfect agreement")
+    ref_line = ax.plot([0, 1], [0, 1], ls=":", c="0.3", lw=1.6)[0]
 
     # Thin black line of best fit, labelled with slope and R² in the legend.
-    import numpy as np
-
     slope, intercept = np.polyfit(wide[jx], wide[jy], 1)
     r2 = wide[jx].corr(wide[jy]) ** 2
     xfit = np.array([0, 1])
-    ax.plot(xfit, slope * xfit + intercept, c="black", lw=1, zorder=5,
-            label=f"Best fit (slope = {slope:.2f}, $R^2$ = {r2:.2f})")
+    fit_line = ax.plot(xfit, slope * xfit + intercept, c="black", lw=1, zorder=5)[0]
 
     ax.set(xlim=(-0.02, 1.02), ylim=(-0.02, 1.02))
     ax.set_xlabel(f"{jx.capitalize()} judge score")
     ax.set_ylabel("OpenAI judge score")
     ax.set_title("Judge self-preference")
     sc.boxoff(ax=ax)
-    ax.legend(loc="lower right", fontsize=8)
-    # Rename the seaborn legend section headers.
-    for txt in ax.get_legend().get_texts():
-        if txt.get_text() == "arm":
-            txt.set_text("Configuration")
+
+    # Pull the arm colours seaborn assigned, then rebuild the legend by hand as two
+    # blocks (Configuration / Model) with bold titles. Configuration entries are
+    # drawn as dots rather than the style markers used in the scatter.
+    auto = ax.get_legend()
+    section, arm_colors = None, {}
+    for h, t in zip(auto.legend_handles, auto.get_texts()):
+        lab = t.get_text()
+        if lab in ("arm", "Model"):
+            section = lab
+        elif section == "arm":
+            arm_colors[lab] = h.get_color()
+    auto.remove()
+
+    # Map the raw exam arm names (baseline / agent / agent+skills) to the canonical
+    # display labels in defaults (baseline → chat → "Chat only", etc.).
+    def _arm_label(arm):
+        return defaults.ARM_LABELS[defaults.EXAM_ARM_MAP.get(arm, arm)]
+
+    cfg_handles = [Line2D([], [], marker="o", linestyle="none", color=c, label=_arm_label(lab))
+                   for lab, c in arm_colors.items()]
+    model_handles = [
+        Line2D([], [], marker="X", linestyle="none", color="0.2", label="Claude"),
+        Line2D([], [], marker="o", linestyle="none", color="0.2", label="GPT"),
+        ref_line, fit_line,
+    ]
+    ref_line.set_label("Perfect agreement")
+    fit_line.set_label(f"Best fit (slope = {slope:.2f}, $R^2$ = {r2:.2f})")
+
+    leg_cfg = ax.legend(handles=cfg_handles, title="Configuration", loc="lower right",
+                        fontsize=8)
+    ax.add_artist(leg_cfg)
+    ax.legend(handles=model_handles, title="Model", loc="upper left", fontsize=8)
     fig.tight_layout()
     out = defaults.OUTPUT_DIR / "fig4_judge_agreement.png"
     fig.savefig(out, dpi=150)

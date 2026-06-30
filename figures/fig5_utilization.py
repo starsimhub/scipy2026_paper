@@ -26,14 +26,14 @@ from collections import Counter
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-import sciris as sc  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sciris as sc
+from matplotlib.lines import Line2D
 
-import defaults  # noqa: E402
-import utils  # noqa: E402
+import defaults
+import utils
 
 # A Skill tool call in the transcript: the ``TOOL_USE · Skill`` marker followed by
 # its JSON payload, from which we pull the ``"skill": "<name>"`` field.

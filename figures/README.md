@@ -21,6 +21,8 @@ and `validation/answers/` (Group B). Figures are written next to the scripts
 All data loaders live in `utils.py` (Group A reads `scores.jsonl`; Group B reads
 `validation/answers/`); shared config and plotting style live in `defaults.py`.
 
+All figures use **Mulish** as their font — Starsim's default plotting font, which ships bundled in `starsim/assets/`. `defaults.py` registers it with Matplotlib on import and sets it as the default `font.family`, falling back silently to the Matplotlib default if Starsim isn't installed.
+
 | Script | Output | Data |
 | --- | --- | --- |
 | `fig1_cost_vs_score.py` | `fig1_cost_vs_score.png` | Group A + B |

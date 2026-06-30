@@ -22,11 +22,12 @@ import re
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import pandas as pd  # noqa: E402
+import matplotlib.pyplot as plt
+import pandas as pd
+import sciris as sc
 
-import defaults  # noqa: E402
-import utils  # noqa: E402
+import defaults
+import utils
 
 # A rubric line item: "- [x] <criterion>: **N/M** <reason>".
 LINE_ITEM = re.compile(
@@ -156,6 +157,24 @@ CATEGORY_COLORS = {
     "unclassified": "#7f7f7f",
 }
 
+# The figure collapses the five reason buckets into three: Incorrect, Omitted, and
+# Other (off_spec + quality + unclassified). Colours are muted (a soft brick red
+# for Incorrect rather than a bright primary red).
+DISPLAY_FROM_CATEGORY = {
+    "incorrect": "incorrect",
+    "omitted": "omitted",
+    "off_spec": "other",
+    "quality": "other",
+    "unclassified": "other",
+}
+DISPLAY_ORDER = ["incorrect", "omitted", "other"]
+DISPLAY_LABELS = {"incorrect": "Incorrect", "omitted": "Omitted", "other": "Other"}
+DISPLAY_COLORS = {
+    "incorrect": "#c44e52",   # muted brick red
+    "omitted": "#dd8452",     # muted orange
+    "other": "#a6a6a6",       # neutral grey
+}
+
 
 def report(items, status):
     print("=" * 78)
@@ -207,48 +226,37 @@ def report(items, status):
     print(piv.astype(int).to_string())
 
 
-def figure(items):
-    mod = items[items["kind"] == "modeling"]
+def figure(items, status):
+    mod = items[items["kind"] == "modeling"].copy()
+    mod["display"] = mod["category"].map(DISPLAY_FROM_CATEGORY)
     configs = utils.present_configs(mod)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.5))
+    # Total available modeling marks per config (the denominator): sum of every
+    # modeling question's total_possible over that config's runs.
+    smod = status[status["kind"] == "modeling"]
+    avail = smod.groupby("config", observed=True)["possible"].sum()
 
-    # (a) by config arm
-    piv = (mod.pivot_table(index="config", columns="category", values="lost",
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+
+    # Marks lost per (config, display category), as a % of available marks.
+    piv = (mod.pivot_table(index="config", columns="display", values="lost",
                            aggfunc="sum", observed=True)
-           .reindex(index=configs, columns=CATEGORY_ORDER).fillna(0))
-    bottom = pd.Series(0.0, index=piv.index)
-    for cat in CATEGORY_ORDER:
-        ax1.bar(range(len(piv)), piv[cat], bottom=bottom, label=cat,
-                color=CATEGORY_COLORS[cat], edgecolor="black", linewidth=0.5)
-        bottom += piv[cat]
-    ax1.set_xticks(range(len(piv)))
-    ax1.set_xticklabels([defaults.CONFIG_LABELS[c] for c in configs])
-    ax1.set_ylabel("modeling marks lost (Q1–Q5)")
-    ax1.set_xlabel("config arm")
-    ax1.set_title("(a) Lost marks by config arm")
-    ax1.legend(fontsize=8, title="reason")
-    ax1.grid(True, axis="y", alpha=0.25)
+           .reindex(index=configs, columns=DISPLAY_ORDER).fillna(0))
+    pct = piv.div([avail.get(c, float("nan")) for c in configs], axis=0) * 100
+    bottom = pd.Series(0.0, index=pct.index)
+    for cat in DISPLAY_ORDER:
+        ax.bar(range(len(pct)), pct[cat], bottom=bottom, label=DISPLAY_LABELS[cat],
+               color=DISPLAY_COLORS[cat])
+        bottom += pct[cat]
+    ax.set_xticks(range(len(pct)))
+    ax.set_xticklabels([defaults.CONFIG_LABELS[c] for c in configs])
+    ax.set_ylabel("Marks lost (% of total)")
+    ax.set_xlabel("Configuration")
+    ax.set_title("Lost marks", fontsize=13)
+    ax.legend(fontsize=8, title="Reason")
+    ax.grid(True, axis="y", alpha=0.25)
+    sc.boxoff(ax=ax)
 
-    # (b) by question
-    qids = [q for q in defaults.MODELING_QIDS]
-    pivq = (mod.pivot_table(index="qid", columns="category", values="lost",
-                            aggfunc="sum", observed=True)
-            .reindex(index=qids, columns=CATEGORY_ORDER).fillna(0))
-    bottom = pd.Series(0.0, index=pivq.index)
-    for cat in CATEGORY_ORDER:
-        ax2.bar(range(len(pivq)), pivq[cat], bottom=bottom, label=cat,
-                color=CATEGORY_COLORS[cat], edgecolor="black", linewidth=0.5)
-        bottom += pivq[cat]
-    ax2.set_xticks(range(len(pivq)))
-    ax2.set_xticklabels([q.upper() for q in qids])
-    ax2.set_ylabel("modeling marks lost (summed over runs)")
-    ax2.set_xlabel("question")
-    ax2.set_title("(b) Lost marks by question")
-    ax2.legend(fontsize=8, title="reason")
-    ax2.grid(True, axis="y", alpha=0.25)
-
-    fig.suptitle("Where modeling marks are lost: wrong vs. omitted vs. style", fontsize=13)
     fig.tight_layout()
     out = utils.RESULTS_DIR / "fig3_lost_marks.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
@@ -260,7 +268,7 @@ def main():
     items = load_line_items()
     status = load_question_status()
     report(items, status)
-    figure(items)
+    figure(items, status)
 
 
 if __name__ == "__main__":

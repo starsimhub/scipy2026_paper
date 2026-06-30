@@ -34,11 +34,11 @@ import pandas as pd
 import sciris as sc
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-import defaults  # noqa: E402
-import utils  # noqa: E402
+import defaults
+import utils
 
 # The q06 canary, excluded from both axes so cost and score describe q01–q05.
 EXCLUDED_QUESTION = "q06_misc"
@@ -56,26 +56,20 @@ EXAM_MODEL_MAP = {
     "gpt-5.5": "gpt-5.5",
 }
 
-# Map exam arms onto the unified arm vocabulary (baseline becomes the new "chat").
-EXAM_ARM_MAP = {"baseline": "chat", "agent": "noskills", "agent+skills": "skills"}
+# Map exam arms onto the unified arm vocabulary (baseline becomes "chat").
+EXAM_ARM_MAP = defaults.EXAM_ARM_MAP
 
 # Marker shape / size / edge width come from the shared defaults module
 # (sonnet/opus glyphs, haiku star, gpt open circle/square). This figure's scatter
 # markers are drawn a touch smaller than fig3's; SCALE keeps the same ratios.
 MARKER_SCALE = 0.948
 
-# Colour per arm. The three validation configs reuse their shared config colours;
-# "chat" (exam baseline) is unique to this figure.
-ARM_COLORS = {
-    "chat": "black",
-    "noskills": defaults.CONFIG_COLORS["noskills"],
-    "skills": defaults.CONFIG_COLORS["skills"],
-    "nudged": defaults.CONFIG_COLORS["nudged"],
-}
+# Colour per arm comes straight from the shared defaults (chat = black, the
+# validation configs reuse CONFIG_COLORS).
+ARM_COLORS = defaults.ARM_COLORS
 ARM_ORDER = ["chat", "noskills", "skills", "nudged"]
-# Display names for the four unified arms: the three agent configs share the
-# centralized ARM_LABELS; "chat" (exam baseline) is unique to this figure.
-ARM_LABELS = {"chat": "Chat only", **defaults.ARM_LABELS}
+# Display names for the four unified arms come straight from the shared defaults.
+ARM_LABELS = defaults.ARM_LABELS
 
 
 def _validation_points():
