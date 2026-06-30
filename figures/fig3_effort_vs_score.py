@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import matplotlib
 import numpy as np
+import sciris as sc
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -100,6 +101,8 @@ def main() -> None:
     ax.set_ylabel("Q1–Q5 modeling score (%)")
     ax.set_title("Score vs. reasoning effort", fontsize=13)
     ax.grid(True, alpha=0.3)
+    ax.set_ylim(top=100)
+    sc.boxoff(ax=ax)
 
     # Two compact legends: colour = config, style/marker = model.
     config_handles = [

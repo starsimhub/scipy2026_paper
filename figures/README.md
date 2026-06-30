@@ -37,15 +37,16 @@ Group B — validation runs (`validation/answers/`); shared loader in
 
 ## Running
 
-From anywhere (the scripts are CWD-independent):
+From anywhere (the scripts are CWD-independent). Regenerate everything:
+
+```bash
+python figures/make_all.py
+```
+
+Or run a single figure:
 
 ```bash
 python figures/judge_agreement.py
-# ...etc, or regenerate all:
-for f in judge_agreement performance_vs_cost fig3_effort_vs_score \
-         fig4a_cost_vs_score fig5_utilization lost_marks; do
-    python figures/$f.py
-done
 ```
 
 Requires `pandas`, `seaborn`, `matplotlib`, `numpy`, and `pyyaml`.
