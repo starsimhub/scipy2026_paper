@@ -24,20 +24,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
+import marker_style as M  # noqa: E402
 import validation_common as C  # noqa: E402
-
-MODEL_LINESTYLE = {"sonnet": "--", "opus": "-"}
-
-# Marker per model for this figure (overrides the shared MODEL_MARKERS): sonnet
-# as a "×", opus as a "❋", both rendered as mathtext glyphs ($...$) so they take
-# the config colour. The ❋ glyph renders visually smaller than the × at the same
-# point size, so size it up per-model for parity.
-MODEL_MARKERS = {"sonnet": "$×$", "opus": "$❋$"}
-# sonnet:opus size ratio is kept consistent with combined_cost_vs_score.py
-# (~0.72 in marker diameter).
-MODEL_MARKERSIZE = {"sonnet": 11.5, "opus": 16}
-# Thin stroke so the filled glyphs read light rather than bold.
-MODEL_MARKEREDGEWIDTH = 0.5
 
 # Effort levels shown on the x-axis. Capped at "high" (the swept runs top out
 # there); xhigh/max are dropped rather than left as empty ticks.
@@ -75,7 +63,7 @@ def main() -> None:
         color = C.CONFIG_COLORS[config]
         # Connecting line drawn separately and faintly, so it guides the eye
         # between effort levels without competing with the markers.
-        ax.plot(xs, ys, linestyle=MODEL_LINESTYLE[model], color=color,
+        ax.plot(xs, ys, linestyle=M.MODEL_LINESTYLE[model], color=color,
                 linewidth=2, alpha=0, zorder=1)
         # Markers + thin error bars on top (opaque). "x" / 8-spoked asterisk are
         # unfilled line markers, so their stroke is the edge — keep it the config
@@ -86,10 +74,10 @@ def main() -> None:
             ys,
             yerr=yerr,
             linestyle="none",
-            marker=MODEL_MARKERS[model],
+            marker=M.MARKERS[model],
             color=color,
-            markersize=MODEL_MARKERSIZE[model],
-            markeredgewidth=MODEL_MARKEREDGEWIDTH,
+            markersize=M.MARKER_DIAMETER[model],
+            markeredgewidth=M.MARKER_EDGEWIDTH[model],
             elinewidth=0.7,
             capsize=3,
             capthick=0.7,
@@ -113,8 +101,8 @@ def main() -> None:
         for c in C.present_configs(rt)
     ]
     model_handles = [
-        Line2D([], [], color="0.3", linestyle="none", marker=MODEL_MARKERS[m],
-               markersize=MODEL_MARKERSIZE[m], markeredgewidth=MODEL_MARKEREDGEWIDTH, label=m)
+        Line2D([], [], color="0.3", linestyle="none", marker=M.MARKERS[m],
+               markersize=M.MARKER_DIAMETER[m], markeredgewidth=M.MARKER_EDGEWIDTH[m], label=m)
         for m in ["sonnet", "opus"]
     ]
     leg1 = ax.legend(handles=config_handles, title="Configuration", loc="lower right", fontsize=9)

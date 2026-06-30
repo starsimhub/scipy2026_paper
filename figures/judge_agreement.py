@@ -11,6 +11,7 @@ Run: ``python figures/judge_agreement.py``
 """
 
 import matplotlib
+import sciris as sc
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -48,27 +49,44 @@ def plot_judge_agreement(df) -> None:
         print("Skipping judge-agreement plot: no answers scored by both judges.")
         return
 
-    r = wide[jx].corr(wide[jy])  # pandas Pearson — no scipy needed
-    bias = (wide[jx] - wide[jy]).mean()
-
     if "model" in wide.columns:
         wide["model_provider"] = wide["model"].str.split("/").str[0]
     else:
         wide["model_provider"] = "unknown"
+    # Friendly provider names for the "Model" legend.
+    wide["Model"] = wide["model_provider"].replace({"anthropic": "Claude", "openai": "GPT"})
 
     fig, ax = plt.subplots(figsize=(6, 6))
+    # Markers swapped relative to seaborn's default order (Claude → X, GPT → o).
     sns.scatterplot(
-        data=wide, x=jx, y=jy, hue="arm", style="model_provider", alpha=0.7, ax=ax
+        data=wide, x=jx, y=jy, hue="arm", style="Model",
+        markers={"Claude": "X", "GPT": "o"}, alpha=0.6, ax=ax,
     )
-    ax.plot([0, 1], [0, 1], ls="--", c="gray", lw=1, label="perfect agreement")
+    ax.plot([0, 1], [0, 1], ls="--", c="gray", lw=1, label="Perfect agreement")
+
+    # Thin black line of best fit, labelled with slope and R².
+    import numpy as np
+
+    slope, intercept = np.polyfit(wide[jx], wide[jy], 1)
+    r2 = wide[jx].corr(wide[jy]) ** 2
+    xfit = np.array([0, 1])
+    ax.plot(xfit, slope * xfit + intercept, c="black", lw=1, zorder=5)
+    # Square axes with equal data ranges, so the data slope equals the visual angle.
+    xm = 0.65
+    ax.text(xm, slope * xm + intercept, f"  slope = {slope:.2f}, $R^2$ = {r2:.2f}",
+            rotation=np.degrees(np.arctan(slope)), rotation_mode="anchor",
+            ha="left", va="bottom", fontsize=8)
+
     ax.set(xlim=(-0.02, 1.02), ylim=(-0.02, 1.02))
-    ax.set_xlabel(f"{jx} judge score")
-    ax.set_ylabel(f"{jy} judge score")
-    ax.set_title(
-        f"Judge agreement (n={len(wide)})\n"
-        f"Pearson r = {r:.2f}   mean gap ({jx} − {jy}) = {bias:+.3f}"
-    )
+    ax.set_xlabel(f"{jx.capitalize()} judge score")
+    ax.set_ylabel("OpenAI judge score")
+    ax.set_title("Judge self-preference")
+    sc.boxoff(ax=ax)
     ax.legend(loc="lower right", fontsize=8)
+    # Rename the seaborn legend section headers.
+    for txt in ax.get_legend().get_texts():
+        if txt.get_text() == "arm":
+            txt.set_text("Configuration")
     fig.tight_layout()
     out = defaults.OUTPUT_DIR / "judge_agreement.png"
     fig.savefig(out, dpi=150)

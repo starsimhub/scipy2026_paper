@@ -38,6 +38,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
+import marker_style as M  # noqa: E402
 import validation_common as C  # noqa: E402
 from exam_common import (  # noqa: E402
     _ANSWER_KEYS,
@@ -68,28 +69,10 @@ EXAM_MODEL_MAP = {
 # Map exam arms onto the unified arm vocabulary (baseline becomes the new "chat").
 EXAM_ARM_MAP = {"baseline": "chat", "agent": "noskills", "agent+skills": "skills"}
 
-# Marker per model: fig3's glyphs for sonnet/opus, the 3-spoked star for haiku,
-# and open circle/square for the gpt models.
-MARKERS = {
-    "haiku": (3, 2, 0),
-    "sonnet": "$×$",
-    "opus": "$❋$",
-    "gpt-mini": "o",
-    "gpt-5.5": "s",
-}
-# Drawn as outlines (facecolor none) so the arm colour shows on the edge; the
-# line-stroke markers (star / glyphs) are already unfilled.
-OPEN_MARKERS = {"gpt-mini", "gpt-5.5"}
-MODEL_ORDER = ["gpt-mini", "gpt-5.5", "haiku", "sonnet", "opus"]
-# Per-model marker areas (pt^2) for visual parity; the ❋ glyph renders small.
-# sonnet:opus diameter ratio (~0.72) is kept consistent with fig3.
-MARKER_SIZE = {"haiku": 150, "sonnet": 120, "opus": 230, "gpt-mini": 70, "gpt-5.5": 70}
-# Per-model legend marker sizes (Line2D diameters, pt).
-LEGEND_MS = {"haiku": 12, "sonnet": 11, "opus": 15, "gpt-mini": 9, "gpt-5.5": 9}
-# Per-model marker edge width. The line-stroke glyphs (×/❋) read light at 0.5 to
-# match fig3; the haiku star needs a heavier stroke to be visible, and the gpt
-# open markers want a clear outline.
-MARKER_LW = {"haiku": 1.8, "sonnet": 0.5, "opus": 0.5, "gpt-mini": 1.6, "gpt-5.5": 1.6}
+# Marker shape / size / edge width come from the shared marker_style module
+# (sonnet/opus glyphs, haiku star, gpt open circle/square). This figure's scatter
+# markers are drawn a touch smaller than fig3's; SCALE keeps the same ratios.
+MARKER_SCALE = 0.948
 
 # Colour per arm. The three validation configs reuse their fig4a colours; "chat"
 # (exam baseline) is a new purple.
@@ -180,14 +163,14 @@ def plot_combined(points: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(9, 6.5))
     for (model, arm), g in points.groupby(["model", "arm"]):
         color = ARM_COLORS.get(arm, "0.5")
-        size = MARKER_SIZE[model]
-        marker = MARKERS[model]
-        open_ = model in OPEN_MARKERS
+        size = M.area(model, MARKER_SCALE)
+        marker = M.MARKERS[model]
+        open_ = model in M.OPEN_MARKERS
         # Faint half-size raw points behind, plus an opaque full-size group mean.
         raw = dict(marker=marker, alpha=0.2, zorder=2)
         mean = dict(marker=marker, alpha=1.0, zorder=3)
         mx, my = g["cost"].mean(), g["score_pct"].mean()
-        lw = MARKER_LW[model]
+        lw = M.MARKER_EDGEWIDTH[model]
         if open_:
             ax.scatter(g["cost"], g["score_pct"], s=size / 2, facecolors="none",
                        edgecolors=color, linewidths=lw, **raw)
@@ -216,10 +199,11 @@ def plot_combined(points: pd.DataFrame) -> None:
         for a in ARM_ORDER if a in present_arms
     ]
     model_handles = [
-        Line2D([], [], marker=MARKERS[m], linestyle="none", color="0.3",
-               markerfacecolor=("none" if m in OPEN_MARKERS else "0.3"),
-               markeredgewidth=MARKER_LW[m], markersize=LEGEND_MS[m], label=m)
-        for m in MODEL_ORDER if m in present_models
+        Line2D([], [], marker=M.MARKERS[m], linestyle="none", color="0.3",
+               markerfacecolor=("none" if m in M.OPEN_MARKERS else "0.3"),
+               markeredgewidth=M.MARKER_EDGEWIDTH[m],
+               markersize=M.MARKER_DIAMETER[m] * MARKER_SCALE, label=m)
+        for m in M.MODEL_ORDER if m in present_models
     ]
     leg1 = ax.legend(handles=arm_handles, title="Configuration", loc="lower right", fontsize=8)
     ax.add_artist(leg1)
