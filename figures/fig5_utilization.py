@@ -29,6 +29,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+import sciris as sc  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 
 import defaults  # noqa: E402
 import utils  # noqa: E402
@@ -161,26 +163,24 @@ def main():
     for i, a in enumerate(util_arms):
         ub = util_by_qid[a]
         pct = [100 * ub.loc[q, "utilization"] if ub.loc[q, "potential"] else 0 for q in qids]
-        ax.bar(x + offsets[i], pct, width, color=defaults.CONFIG_COLORS[a], edgecolor="black",
-               label=f"{defaults.CONFIG_LABELS[a]} — overall {100 * arm_util[a][1]:.0f}%")
-        # Per-arm overall reference line in the same colour.
+        ax.bar(x + offsets[i], pct, width, color=defaults.CONFIG_COLORS[a],
+               label=defaults.CONFIG_LABELS[a])
+        # Per-arm mean-utilization reference line in the same colour.
         ax.axhline(100 * arm_util[a][1], color=defaults.CONFIG_COLORS[a], linestyle="--",
-                   linewidth=1.2, alpha=0.8)
-        for xi, q in zip(x + offsets[i], qids):
-            r = ub.loc[q]
-            if r["potential"]:
-                ax.text(xi, 100 * r["utilization"], f"{int(r['realized'])}/{int(r['potential'])}",
-                        ha="center", va="bottom", fontsize=7)
+                   linewidth=1.2, alpha=0.95)
     ax.set_xticks(x)
-    ax.set_xticklabels(qids)
-    ax.set_xlabel("question")
-    ax.set_ylabel("utilization of relevant skills (%)")
+    ax.set_xticklabels([f"Q{int(q[1:])}" for q in qids])
+    ax.set_xlabel("Question")
+    ax.set_ylabel("Utilization (%)")
     ax.set_ylim(0, 100)
-    ax.set_title("Skill utilization: realized vs. potential uses, by plugin arm\n"
-                 "(common denominator: skills relevant to either arm; potential = 1 use/run)",
-                 fontsize=12)
+    ax.set_title("Skill utilization", fontsize=13)
     ax.grid(True, axis="y", alpha=0.3)
-    ax.legend(loc="upper left", fontsize=9, title="arm")
+    sc.boxoff(ax=ax)
+    # Bar entries plus a single neutral entry for the per-arm dotted mean lines.
+    handles, labels = ax.get_legend_handles_labels()
+    handles.append(Line2D([], [], color="0.4", linestyle="--", linewidth=1.2))
+    labels.append("Mean utilization")
+    ax.legend(handles, labels, loc="upper left", fontsize=9, title="Configuration")
     fig.tight_layout()
     out = utils.RESULTS_DIR / "fig5_skill_utilization.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
