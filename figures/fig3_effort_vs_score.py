@@ -33,7 +33,9 @@ MODEL_LINESTYLE = {"sonnet": "--", "opus": "-"}
 # the config colour. The ❋ glyph renders visually smaller than the × at the same
 # point size, so size it up per-model for parity.
 MODEL_MARKERS = {"sonnet": "$×$", "opus": "$❋$"}
-MODEL_MARKERSIZE = {"sonnet": 10, "opus": 16}
+# sonnet:opus size ratio is kept consistent with combined_cost_vs_score.py
+# (~0.72 in marker diameter).
+MODEL_MARKERSIZE = {"sonnet": 11.5, "opus": 16}
 # Thin stroke so the filled glyphs read light rather than bold.
 MODEL_MARKEREDGEWIDTH = 0.5
 
@@ -97,25 +99,28 @@ def main() -> None:
 
     ax.set_xticks(range(len(EFFORT_AXIS)))
     ax.set_xticklabels(EFFORT_AXIS)
-    ax.set_xlabel("reasoning effort")
-    ax.set_ylabel("Q1–Q5 modeling score (%)")
-    ax.set_title("Score vs. reasoning effort", fontsize=13)
+    ax.set_xlabel("Effort")
+    ax.set_ylabel("Exam score (%)")
+    ax.set_title("Performance vs. effort", fontsize=13)
     ax.grid(True, alpha=0.3)
     ax.set_ylim(top=100)
     sc.boxoff(ax=ax)
 
     # Two compact legends: colour = config, style/marker = model.
     config_handles = [
-        Line2D([], [], color=C.CONFIG_COLORS[c], lw=3, label=c) for c in C.present_configs(rt)
+        Line2D([], [], marker="o", linestyle="none", color=C.CONFIG_COLORS[c],
+               markersize=9, label=C.ARM_LABELS[c])
+        for c in C.present_configs(rt)
     ]
     model_handles = [
-        Line2D([], [], color="0.3", linestyle=MODEL_LINESTYLE[m], marker=MODEL_MARKERS[m],
+        Line2D([], [], color="0.3", linestyle="none", marker=MODEL_MARKERS[m],
                markersize=MODEL_MARKERSIZE[m], markeredgewidth=MODEL_MARKEREDGEWIDTH, label=m)
         for m in ["sonnet", "opus"]
     ]
-    leg1 = ax.legend(handles=config_handles, title="config", loc="lower right", fontsize=9)
+    leg1 = ax.legend(handles=config_handles, title="Configuration", loc="lower right", fontsize=9)
     ax.add_artist(leg1)
-    ax.legend(handles=model_handles, title="model", loc="lower center", fontsize=9)
+    ax.legend(handles=model_handles, title="Model", loc="lower center", fontsize=9,
+              labelspacing=1.0, handletextpad=0.8, borderpad=0.8)
 
     fig.tight_layout()
     out = C.RESULTS_DIR / "fig3_effort_vs_score.png"

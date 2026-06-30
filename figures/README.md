@@ -35,6 +35,12 @@ Group B — validation runs (`validation/answers/`); shared loader in
 | `fig5_utilization.py` | `fig5_skill_utilization.png` |
 | `lost_marks.py` | `lost_marks.png` |
 
+Combined (pools Group A + Group B onto one plot):
+
+| Script | Output |
+| --- | --- |
+| `combined_cost_vs_score.py` | `combined_cost_vs_score.png` |
+
 ## Running
 
 From anywhere (the scripts are CWD-independent). Regenerate everything:

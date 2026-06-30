@@ -163,7 +163,7 @@ def main() -> None:
         ub = util_by_qid[a]
         pct = [100 * ub.loc[q, "utilization"] if ub.loc[q, "potential"] else 0 for q in qids]
         ax.bar(x + offsets[i], pct, width, color=C.CONFIG_COLORS[a], edgecolor="black",
-               label=f"{a} — overall {100 * arm_util[a][1]:.0f}%")
+               label=f"{C.CONFIG_LABELS[a]} — overall {100 * arm_util[a][1]:.0f}%")
         # Per-arm overall reference line in the same colour.
         ax.axhline(100 * arm_util[a][1], color=C.CONFIG_COLORS[a], linestyle="--",
                    linewidth=1.2, alpha=0.8)

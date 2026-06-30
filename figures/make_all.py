@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Regenerate every paper figure.
 
 Runs each figure script's ``main()`` in turn, reading data from the exam repo
@@ -16,6 +17,7 @@ FIGURE_MODULES = [
     "performance_vs_cost",
     "fig3_effort_vs_score",
     "fig4a_cost_vs_score",
+    "combined_cost_vs_score",
     "fig5_utilization",
     "lost_marks",
 ]

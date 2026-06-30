@@ -224,7 +224,7 @@ def figure(items: pd.DataFrame) -> None:
                 color=CATEGORY_COLORS[cat], edgecolor="black", linewidth=0.5)
         bottom += piv[cat]
     ax1.set_xticks(range(len(piv)))
-    ax1.set_xticklabels(configs)
+    ax1.set_xticklabels([C.CONFIG_LABELS[c] for c in configs])
     ax1.set_ylabel("modeling marks lost (Q1–Q5)")
     ax1.set_xlabel("config arm")
     ax1.set_title("(a) Lost marks by config arm")

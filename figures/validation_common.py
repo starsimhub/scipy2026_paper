@@ -55,14 +55,27 @@ CONFIG_COLORS = {
     "nudged": "#55A868",
     "full": "#DD8452",
 }
+# Display names for the three run arms, used across every figure. Edit here to
+# rename an arm everywhere. "full" is the legacy alias for "skills" and shares
+# its label.
 CONFIG_LABELS = {
-    "noskills": "noskills (bare)",
-    "skills": "skills (search + plugin)",
-    "nudged": "nudged (skills + prompt steer)",
-    "full": "full (search + plugin)",
+    "noskills": "No skills",
+    "skills": "Skills",
+    "nudged": "Skills + nudged",
+    "full": "Skills",
 }
 # Config labels whose runs have the starsim-ai plugin/skills loaded.
 PLUGIN_CONFIGS = ["skills", "nudged", "full"]
+
+# Longer "Agent …" display labels shared by fig3 and the combined cost-vs-score
+# figure (the latter extends these with a "chat" arm). fig4a keeps the shorter
+# CONFIG_LABELS above.
+ARM_LABELS = {
+    "noskills": "Agent (no skills)",
+    "skills": "Agent + skills",
+    "nudged": "Agent + skills + nudged",
+    "full": "Agent + skills",  # legacy alias for skills
+}
 
 
 def present_configs(df) -> list[str]:
