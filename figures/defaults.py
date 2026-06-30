@@ -55,7 +55,7 @@ CONFIG_COLORS = {
     "nudged": "#55A868",
     "full": "#DD8452",
 }
-# Short display names (used by fig5 / lost_marks). "full" aliases "skills".
+# Short display names (used by fig3 / fig5). "full" aliases "skills".
 CONFIG_LABELS = {
     "noskills": "No skills",
     "skills": "Skills",
@@ -80,7 +80,7 @@ EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"]
 
 # ── shared per-model marker styling ───────────────────────────────────────────
 # Single source of truth for marker shape, size, edge width, line style, and draw
-# order, so ``fig3_effort_vs_score`` and ``combined_cost_vs_score`` stay visually
+# order, so ``fig2_effort_vs_score`` and ``fig1_cost_vs_score`` stay visually
 # consistent (e.g. the sonnet:opus size ratio is defined once here).
 #
 # Sizes are stored as marker *diameters* in points. Line-marker callers

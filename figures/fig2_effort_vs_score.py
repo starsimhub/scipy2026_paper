@@ -11,7 +11,7 @@ effort) cell with no data is simply skipped.
 Adapted from the exam repo's ``validation/analysis/fig3_effort_vs_score.py`` to
 read data via :mod:`defaults` and write the figure alongside this script.
 
-Run: ``python figures/fig3_effort_vs_score.py``
+Run: ``python figures/fig2_effort_vs_score.py``
 """
 
 import matplotlib
@@ -109,7 +109,7 @@ def main():
               labelspacing=1.0, handletextpad=0.8, borderpad=0.8)
 
     fig.tight_layout()
-    out = utils.RESULTS_DIR / "fig3_effort_vs_score.png"
+    out = utils.RESULTS_DIR / "fig2_effort_vs_score.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")

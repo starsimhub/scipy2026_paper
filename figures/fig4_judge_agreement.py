@@ -7,7 +7,7 @@ shared answer, annotating Pearson r (agreement) and the mean signed gap
 ``analysis/plot_results.py:plot_judge_agreement`` to read data via
 :mod:`defaults` and write the figure alongside this script.
 
-Run: ``python figures/judge_agreement.py``
+Run: ``python figures/fig4_judge_agreement.py``
 """
 
 import matplotlib
@@ -84,7 +84,7 @@ def plot_judge_agreement(df):
         if txt.get_text() == "arm":
             txt.set_text("Configuration")
     fig.tight_layout()
-    out = defaults.OUTPUT_DIR / "judge_agreement.png"
+    out = defaults.OUTPUT_DIR / "fig4_judge_agreement.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")

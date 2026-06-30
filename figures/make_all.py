@@ -13,11 +13,11 @@ import traceback
 
 # Figure modules to run, in order. Each exposes a ``main()`` that writes its PNG.
 FIGURE_MODULES = [
-    "judge_agreement",
-    "fig3_effort_vs_score",
-    "combined_cost_vs_score",
+    "fig1_cost_vs_score",
+    "fig2_effort_vs_score",
+    "fig3_lost_marks",
+    "fig4_judge_agreement",
     "fig5_utilization",
-    "lost_marks",
 ]
 
 

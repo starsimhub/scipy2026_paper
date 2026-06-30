@@ -13,8 +13,8 @@ config arm and by question.
 Adapted from the exam repo's ``validation/analysis/lost_marks.py`` to read data
 via :mod:`defaults` and write the figure alongside this script.
 
-Run: ``python figures/lost_marks.py``
-Writes ``lost_marks.png`` and prints the full breakdown.
+Run: ``python figures/fig3_lost_marks.py``
+Writes ``fig3_lost_marks.png`` and prints the full breakdown.
 """
 
 import re
@@ -250,7 +250,7 @@ def figure(items):
 
     fig.suptitle("Where modeling marks are lost: wrong vs. omitted vs. style", fontsize=13)
     fig.tight_layout()
-    out = utils.RESULTS_DIR / "lost_marks.png"
+    out = utils.RESULTS_DIR / "fig3_lost_marks.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"\nwrote {out}")

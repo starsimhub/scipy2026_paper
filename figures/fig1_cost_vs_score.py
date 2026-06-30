@@ -26,7 +26,7 @@ a colour:
 Models shown: haiku, sonnet, opus (4.8), gpt-mini (gpt-5.4-mini), gpt-5.5. Opus
 4.6 is dropped. Marker styling is shared via ``defaults``.
 
-Run: ``python figures/combined_cost_vs_score.py``
+Run: ``python figures/fig1_cost_vs_score.py``
 """
 
 import matplotlib
@@ -201,7 +201,7 @@ def plot_combined(points):
               labelspacing=1.0, handletextpad=0.8, borderpad=0.8)
 
     fig.tight_layout()
-    out = utils.RESULTS_DIR / "combined_cost_vs_score.png"
+    out = utils.RESULTS_DIR / "fig1_cost_vs_score.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")

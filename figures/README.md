@@ -21,25 +21,13 @@ and `validation/answers/` (Group B). Figures are written next to the scripts
 All data loaders live in `utils.py` (Group A reads `scores.jsonl`; Group B reads
 `validation/answers/`); shared config and plotting style live in `defaults.py`.
 
-Group A — inspect-ai exam (`scores.jsonl`):
-
-| Script | Output |
-| --- | --- |
-| `judge_agreement.py` | `judge_agreement.png` |
-
-Group B — validation runs (`validation/answers/`):
-
-| Script | Output |
-| --- | --- |
-| `fig3_effort_vs_score.py` | `fig3_effort_vs_score.png` |
-| `fig5_utilization.py` | `fig5_skill_utilization.png` |
-| `lost_marks.py` | `lost_marks.png` |
-
-Combined (pools Group A + Group B onto one plot):
-
-| Script | Output |
-| --- | --- |
-| `combined_cost_vs_score.py` | `combined_cost_vs_score.png` |
+| Script | Output | Data |
+| --- | --- | --- |
+| `fig1_cost_vs_score.py` | `fig1_cost_vs_score.png` | Group A + B |
+| `fig2_effort_vs_score.py` | `fig2_effort_vs_score.png` | Group B |
+| `fig3_lost_marks.py` | `fig3_lost_marks.png` | Group B |
+| `fig4_judge_agreement.py` | `fig4_judge_agreement.png` | Group A |
+| `fig5_utilization.py` | `fig5_skill_utilization.png` | Group B |
 
 ## Running
 
@@ -52,7 +40,7 @@ python figures/make_all.py
 Or run a single figure:
 
 ```bash
-python figures/judge_agreement.py
+python figures/fig1_cost_vs_score.py
 ```
 
 Requires `pandas`, `seaborn`, `matplotlib`, `numpy`, and `pyyaml`.
