@@ -2,7 +2,7 @@
 # Ensure that this title is the same as the one in `myst.yml`
 title: "Vibes, meet rigor: Evaluating and improving AI performance on complex scientific code"
 abstract: |
-  Scientists apply rigorous methods to their research, but rarely to the AI tools they use to write code. We tested different LLM models in combination with domain-specific tools (including MCP servers and skills) to find the optimal combination for writing complex domain-specific code. We created a quantitative proficiency test for Starsim, a disease modeling framework, and evaluated different combinations of models and tools. While Claude Opus outperformed other models, access to tools allowed cheaper models (like Haiku) to perform almost as well as more expensive ones. Thus, to improve LLM performance on domain-specific problems, we recommend developing a set of tools with the help of quantitative evaluation.
+  Scientists apply rigorous methods to their research, but rarely to the AI tools they use to write code. We tested different large language models (LLMs) in combination with domain-specific tools (including MCP servers and custom-written skills) to find the optimal combination for writing complex domain-specific code. To evaluate LLMs' understanding of Starsim, a Python-based disease modeling framework, we wrote a quantitative proficiency exam. Using this exam, we tested different LLMs and varied their access to tools. Scores ranged widely, from ~50% for Claude Haiku 4.5 and GPT-5 mini without tools to nearly 100% for Claude Opus 4.8 with tools. While LLM choice had the biggest impact on exam scores, tool access also significantly improved performance for both the cheapest (Haiku) and most capable (Opus) models, with more modest benefits for intermediate models. Thus, to improve LLM performance on domain-specific problems, we recommend developing a set of tools with the help of quantitative evaluation.
 ---
 
 ## Introduction
@@ -50,23 +50,37 @@ Second, the gains are largest for the cheaper models. The two frontier models (S
 
 The exception is Haiku 4.5, which improves but remains well behind the others (0.66 with skills) — there is evidently a floor of base capability below which skills cannot compensate. The clearest illustration of the skills' effect is the integrity question (q05_misc): *every* model scores 0.00 at baseline, because the questions cannot be answered from training data alone and the rubric does not reward confident fabrication. Once the skills (which surface the current documentation) are available, the Anthropic models jump to 0.73, confirming both that the integrity question behaves as designed and that the gains elsewhere reflect genuine grounding rather than judge leniency.
 
-```{figure} figures/score_grid_tools.png
-:label: fig-score-grid
-:width: 100%
+```{figure} ../figures/fig1_cost_vs_score.png
+:label: fig-cost-score
+:width: 80%
 
-Mean rubric score by exam question, model, and mode (baseline vs. skills), as graded by the execution-enabled judge. Greener is better. The bottom "TOTAL" row is the point-weighted exam score. Adding skills (right column of each model pair) improves every model on every topic, with the largest gains for the cheaper models.
+TBC
+```
+
+```{figure} ../figures/fig2_effort_vs_score.png
+:label: fig-effort-score
+:width: 80%
+
+TBC
+```
+
+```{figure} ../figures/fig3_lost_marks.png
+:label: fig-lost-marks
+:width: 80%
+
+TBC
+```
+
+```{figure} ../figures/fig5_skill_utilization.png
+:label: fig-skill-utilization
+:width: 80%
+
+TBC
 ```
 
 ### Accuracy comes at the cost of runtime
 
 These accuracy gains are not free. @fig-runtime plots each configuration's exam score against its mean wall-clock runtime per answer. Moving from baseline to skills (the arrows) shifts every model up and to the right: the skills arm takes substantially longer per answer — roughly two to three times the baseline runtime — because the agent reads documentation, writes and re-runs more code, and iterates more before answering. For a researcher, this quantifies a concrete trade-off: tool access buys a large accuracy improvement, but at the cost of latency (and the associated token expenditure).
-
-```{figure} figures/performance_vs_runtime.png
-:label: fig-runtime
-:width: 80%
-
-Exam performance vs. mean runtime per answer. Marker shape denotes model; color denotes mode (blue = baseline, orange = skills). Arrows connect each model's baseline and skills runs. Skills move every model up and to the right: higher scores, but longer runtimes.
-```
 
 ### The grading is robust to judge choice
 
@@ -74,9 +88,9 @@ Because the answers are graded by LLMs, a natural concern is whether the results
 
 That said, the panel does reveal a small but consistent own-provider bias: each judge scores answers written by its own provider's models slightly more generously. Measuring the per-answer gap as the Anthropic judge's score minus the OpenAI judge's score, this gap is larger for Anthropic-authored answers (+0.043) than for OpenAI-authored answers (+0.032) — a difference-in-differences of +0.011 (rising to +0.019 when pooling across all judge variants). Equivalently, the Anthropic judge mildly favors Anthropic answers and the OpenAI judge mildly favors OpenAI answers. The effect is real but an order of magnitude smaller than the skills effect we are measuring (typically 0.1–0.3), so it does not change any of our conclusions — but it is precisely why we grade with a balanced two-provider panel rather than trusting either judge alone.
 
-```{figure} figures/judge_agreement.png
-:label: fig-judge
-:width: 70%
+```{figure} ../figures/fig4_judge_agreement.png
+:label: fig-judge-agreement
+:width: 100%
 
 Agreement between the two independent rubric judges. Each point is one graded answer, plotting the Anthropic judge's score (x) against the OpenAI judge's score (y); the dashed line is perfect agreement. The judges agree closely (r = 0.97, mean gap +0.022), across both modes (color) and both model providers (marker).
 ```
