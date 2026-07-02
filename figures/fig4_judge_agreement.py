@@ -63,7 +63,7 @@ def plot_judge_agreement(df):
     arm_palette = {arm: defaults.ARM_COLORS[defaults.EXAM_ARM_MAP.get(arm, arm)]
                    for arm in wide["arm"].unique()}
 
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(13, 6))
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(9, 4.2))
     # Markers swapped relative to seaborn's default order (Claude → X, GPT → o).
     sns.scatterplot(
         data=wide, x=jx, y=jy, hue="arm", style="Model", palette=arm_palette,

@@ -186,7 +186,8 @@ def plot_combined(points):
         Line2D([], [], marker=defaults.MARKERS[m], linestyle="none", color="0.3",
                markerfacecolor=("none" if m in defaults.OPEN_MARKERS else "0.3"),
                markeredgewidth=defaults.MARKER_EDGEWIDTH[m],
-               markersize=defaults.MARKER_DIAMETER[m] * MARKER_SCALE, label=m)
+               markersize=defaults.MARKER_DIAMETER[m] * MARKER_SCALE,
+               label=m.capitalize().replace("Gpt", "GPT"))
         for m in defaults.MODEL_MARKER_ORDER if m in present_models
     ]
     leg1 = ax.legend(handles=arm_handles, title="Configuration", loc="lower right", fontsize=8)

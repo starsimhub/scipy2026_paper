@@ -100,7 +100,7 @@ def main():
     ]
     model_handles = [
         Line2D([], [], color="0.3", linestyle="none", marker=defaults.MARKERS[m],
-               markersize=defaults.MARKER_DIAMETER[m], markeredgewidth=defaults.MARKER_EDGEWIDTH[m], label=m)
+               markersize=defaults.MARKER_DIAMETER[m], markeredgewidth=defaults.MARKER_EDGEWIDTH[m], label=m.capitalize())
         for m in ["sonnet", "opus"]
     ]
     leg1 = ax.legend(handles=config_handles, title="Configuration", loc="lower right", fontsize=9)

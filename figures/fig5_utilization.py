@@ -41,6 +41,14 @@ SKILL_RE = re.compile(r'TOOL_USE · Skill\s*\n\s*\{[^}]*?"skill":\s*"([^"]+)"', 
 # answerNN.log → qid (answer01 → q01); the answer ids line up 1:1 with questions.
 ANSWER_LOG_RE = re.compile(r"answer(\d+)\.log$")
 
+# Which figure variant(s) to emit into fig5_skill_utilization.png. The default is
+# a single panel of overall utilization split by model (skills vs nudged). The
+# per-model+effort / per-question two-panel view and the model×question heatmap
+# are kept as options.
+ONE_PANEL = True       # single by-model panel (default)
+TWO_PANEL = False      # by model+effort (top) and by question (bottom)
+MAKE_HEATMAP = False    # extra fig5_skill_utilization_heatmap.png
+
 
 def load_skill_invocations():
     """One row per skill invocation across every run: (run, config, qid, skill)."""
@@ -150,96 +158,186 @@ def main():
         nud_overall = nr / npot if npot else float("nan")
         arm_util["nudged"] = (nud_util, nud_overall, n_nudged_runs)
 
-    # ── utilization by model + effort (top panel) ───────────────────────────────
-    # Overall utilization split by model and effort, computed separately for the
+    # Overall utilization split by grouping key, computed separately for the
     # organic (skills) arm and the nudged arm, scored against the same common
-    # relevant set used per-question.
-    def _util_by_model_effort(arm_inv, cfgs):
-        out = {}  # (model, effort) -> overall utilization fraction
-        for (model, effort), sub in arm_inv.groupby(["model", "effort"]):
-            n_runs = sum(runs_per_cme.get((c, model, effort), 0) for c in cfgs)
+    # relevant set used per-question. ``keys`` is the manifest column(s) to split
+    # on (e.g. ["model"] or ["model", "effort"]).
+    # Position of each manifest field within the runs_per_cme (config, model,
+    # effort) key, so n_runs can be summed over whichever fields aren't split on.
+    _CME_POS = {"model": 1, "effort": 2}
+
+    def _util_split(arm_inv, cfgs, keys):
+        out = {}  # key-tuple (or scalar for a single key) -> utilization fraction
+        for key, sub in arm_inv.groupby(keys):
+            kt = key if isinstance(key, tuple) else (key,)
+            n_runs = sum(
+                v for cme, v in runs_per_cme.items()
+                if cme[0] in cfgs
+                and all(cme[_CME_POS[keys[i]]] == kt[i] for i in range(len(keys)))
+            )
             if not n_runs:
                 continue
             u = skill_utilization(sub, n_runs, relevant)
             pot = u["potential"].sum()
-            out[(model, effort)] = u["realized"].sum() / pot if pot else float("nan")
+            frac = u["realized"].sum() / pot if pot else float("nan")
+            out[kt if len(keys) > 1 else kt[0]] = frac
         return out
 
-    util_me = {
-        "skills": _util_by_model_effort(organic, set(organic_cfgs)),
-        "nudged": _util_by_model_effort(nudged, {"nudged"}),
-    }
-    util_me = {a: d for a, d in util_me.items() if d}
-    all_me = set().union(*util_me.values())
-    me_models = [m for m in defaults.MODEL_ORDER if any(k[0] == m for k in all_me)]
-    # (model, effort) groups present for either arm, in canonical order.
-    me_groups = [
-        (m, e)
-        for m in me_models
-        for e in defaults.EFFORT_ORDER
-        if (m, e) in all_me
-    ]
-
-    # ── utilization by question (bottom panel) ───────────────────────────────────
-    # Grouped bars per arm (skills vs nudged).
-    util_arms = [a for a in ("skills", "nudged") if a in arm_util]
-    util_by_qid = {a: arm_util[a][0].set_index("qid") for a in util_arms}
-    # Questions with nonzero potential in at least one arm, in canonical order.
-    qids = [q for q in defaults.ALL_QIDS
-            if any(util_by_qid[a].loc[q, "potential"] for a in util_arms)]
-
-    fig, (axT, ax) = plt.subplots(2, 1, figsize=(9, 10))
-
-    # Top panel: grouped bars, x = (model, effort) group, one bar per arm.
-    me_arms = list(util_me)
-    na = len(me_arms)
-    wT = 0.8 / na
-    offT = (np.arange(na) - (na - 1) / 2) * wT
-    xT = np.arange(len(me_groups))
-    for i, a in enumerate(me_arms):
-        pct = [100 * util_me[a].get(g, np.nan) for g in me_groups]
-        axT.bar(xT + offT[i], pct, wT, color=defaults.CONFIG_COLORS[a],
-                label=defaults.CONFIG_LABELS[a])
-    axT.set_xticks(xT)
-    axT.set_xticklabels([f"{m}\n{e}" for m, e in me_groups])
-    axT.set_xlabel("Model / effort")
-    axT.set_ylabel("Utilization (%)")
-    axT.set_ylim(0, 100)
-    axT.set_title("Skill utilization by model and effort", fontsize=13)
-    axT.grid(True, axis="y", alpha=0.3)
-    sc.boxoff(ax=axT)
-    axT.legend(loc="upper left", fontsize=9, title="Configuration")
-
-    n = len(util_arms)
-    width = 0.8 / n
-    offsets = (np.arange(n) - (n - 1) / 2) * width
-    x = np.arange(len(qids))
-    for i, a in enumerate(util_arms):
-        ub = util_by_qid[a]
-        pct = [100 * ub.loc[q, "utilization"] if ub.loc[q, "potential"] else 0 for q in qids]
-        ax.bar(x + offsets[i], pct, width, color=defaults.CONFIG_COLORS[a],
-               label=defaults.CONFIG_LABELS[a])
-        # Per-arm mean-utilization reference line in the same colour.
-        ax.axhline(100 * arm_util[a][1], color=defaults.CONFIG_COLORS[a], linestyle="--",
-                   linewidth=1.2, alpha=0.95)
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"Q{int(q[1:])}" for q in qids])
-    ax.set_xlabel("Question")
-    ax.set_ylabel("Utilization (%)")
-    ax.set_ylim(0, 100)
-    ax.set_title("Skill utilization by question", fontsize=13)
-    ax.grid(True, axis="y", alpha=0.3)
-    sc.boxoff(ax=ax)
-    # Bar entries plus a single neutral entry for the per-arm dotted mean lines.
-    handles, labels = ax.get_legend_handles_labels()
-    handles.append(Line2D([], [], color="0.4", linestyle="--", linewidth=1.2))
-    labels.append("Mean utilization")
-    ax.legend(handles, labels, loc="upper left", fontsize=9, title="Configuration")
-    fig.tight_layout()
     out = utils.RESULTS_DIR / "fig5_skill_utilization.png"
-    fig.savefig(out, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"wrote {out}")
+
+    if ONE_PANEL:
+        # ── single panel: utilization by question and model, skills vs nudged ─────
+        # Colour encodes model; the light/dark shade encodes configuration (skills
+        # = lighter, skills+nudged = darker). One bar per (model, arm) within each
+        # question group. Each (model, arm) is scored against the common relevant
+        # set, with its own n_runs from the manifests.
+        def _perq_by_model(arm_inv, cfgs):
+            res = {}  # (model, qid) -> utilization fraction (or None)
+            for model, sub in arm_inv.groupby("model"):
+                nr = sum(v for cme, v in runs_per_cme.items()
+                         if cme[0] in cfgs and cme[1] == model)
+                if not nr:
+                    continue
+                u = skill_utilization(sub, nr, relevant).set_index("qid")
+                for q in u.index:
+                    res[(model, q)] = (u.loc[q, "utilization"]
+                                       if u.loc[q, "potential"] else None)
+            return res
+
+        perq = {
+            "skills": _perq_by_model(organic, set(organic_cfgs)),
+            "nudged": _perq_by_model(nudged, {"nudged"}),
+        }
+        perq = {a: d for a, d in perq.items() if d}
+        q_arms = list(perq)
+        q_models = [m for m in defaults.MODEL_ORDER
+                    if any(k[0] == m for d in perq.values() for k in d)]
+        # Questions with any relevant skills (nonzero potential), canonical order.
+        qids = [q for q in defaults.ALL_QIDS
+                if any(k[1] == q for d in perq.values() for k in d)]
+
+        # Per-model base colour; without-nudge bars use a lightened tint of it.
+        # A warm→cool ramp keyed to model capability: opus warm (terracotta),
+        # sonnet cooler (teal), haiku coolest (indigo). Deliberately distinct from
+        # the blue/orange/green used for the agent / skills / nudged configurations.
+        MODEL_COLORS = {"haiku": "#3FA08A", "sonnet": "#B47DB8", "opus": "#D97757"}
+        model_color = {m: MODEL_COLORS.get(m, "0.5") for m in q_models}
+
+        def _lighten(c, f=0.55):
+            r, g, b = matplotlib.colors.to_rgb(c)
+            return (r + (1 - r) * f, g + (1 - g) * f, b + (1 - b) * f)
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        combos = [(m, a) for m in q_models for a in q_arms]
+        nb = len(combos)
+        width = 0.8 / nb
+        offsets = (np.arange(nb) - (nb - 1) / 2) * width
+        x = np.arange(len(qids))
+        for k, (m, a) in enumerate(combos):
+            pct = [100 * (perq[a].get((m, q)) or 0) for q in qids]
+            color = model_color[m] if a == "nudged" else _lighten(model_color[m])
+            ax.bar(x + offsets[k], pct, width, color=color)
+        # Per-arm mean-utilization reference lines, in the same neutral light/dark
+        # shade used to encode configuration.
+        for a in q_arms:
+            shade = "0.35" if a == "nudged" else _lighten("0.35")
+            ax.axhline(100 * arm_util[a][1], color=shade, linestyle="--",
+                       linewidth=1.2, alpha=0.95)
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"Q{int(q[1:])}" for q in qids])
+        ax.set_xlabel("Question")
+        ax.set_ylabel("Utilization (%)")
+        ax.set_ylim(0, 100)
+        ax.set_title("Skill utilization by question and model", fontsize=13)
+        ax.grid(True, axis="y", alpha=0.3)
+        sc.boxoff(ax=ax)
+
+        # Two legends: colour = model, light/dark shade = configuration.
+        from matplotlib.patches import Patch
+        arm_label = {"skills": "Without nudge", "nudged": "With nudge"}
+        model_handles = [Patch(facecolor=model_color[m], label=m.capitalize()) for m in q_models]
+        shade_handles = [Patch(facecolor=_lighten("0.35") if a == "skills" else "0.35",
+                               label=arm_label[a]) for a in q_arms]
+        # Mean-utilization lines, one per arm, with the pooled mean % in the label.
+        for a in q_arms:
+            shade = "0.35" if a == "nudged" else _lighten("0.35")
+            shade_handles.append(Line2D(
+                [], [], color=shade, linestyle="--", linewidth=1.2,
+                label=f"Mean utilization {arm_label[a].lower()} ({100 * arm_util[a][1]:.1f}%)"))
+        leg1 = ax.legend(handles=model_handles, title="Model", loc="upper left", fontsize=9)
+        ax.add_artist(leg1)
+        ax.legend(handles=shade_handles, title="Configuration", loc="upper right", fontsize=9)
+        fig.tight_layout()
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"wrote {out}")
+
+    elif TWO_PANEL:
+        # ── top panel: utilization by model + effort (skills vs nudged) ───────────
+        util_me = {
+            "skills": _util_split(organic, set(organic_cfgs), ["model", "effort"]),
+            "nudged": _util_split(nudged, {"nudged"}, ["model", "effort"]),
+        }
+        util_me = {a: d for a, d in util_me.items() if d}
+        all_me = set().union(*util_me.values())
+        me_models = [m for m in defaults.MODEL_ORDER if any(k[0] == m for k in all_me)]
+        me_groups = [(m, e) for m in me_models for e in defaults.EFFORT_ORDER
+                     if (m, e) in all_me]
+
+        # ── bottom panel: utilization by question (skills vs nudged) ──────────────
+        util_arms = [a for a in ("skills", "nudged") if a in arm_util]
+        util_by_qid = {a: arm_util[a][0].set_index("qid") for a in util_arms}
+        qids = [q for q in defaults.ALL_QIDS
+                if any(util_by_qid[a].loc[q, "potential"] for a in util_arms)]
+
+        fig, (axT, ax) = plt.subplots(2, 1, figsize=(9, 10))
+
+        me_arms = list(util_me)
+        na = len(me_arms)
+        wT = 0.8 / na
+        offT = (np.arange(na) - (na - 1) / 2) * wT
+        xT = np.arange(len(me_groups))
+        for i, a in enumerate(me_arms):
+            pct = [100 * util_me[a].get(g, np.nan) for g in me_groups]
+            axT.bar(xT + offT[i], pct, wT, color=defaults.CONFIG_COLORS[a],
+                    label=defaults.CONFIG_LABELS[a])
+        axT.set_xticks(xT)
+        axT.set_xticklabels([f"{m}\n{e}" for m, e in me_groups])
+        axT.set_xlabel("Model / effort")
+        axT.set_ylabel("Utilization (%)")
+        axT.set_ylim(0, 100)
+        axT.set_title("Skill utilization by model and effort", fontsize=13)
+        axT.grid(True, axis="y", alpha=0.3)
+        sc.boxoff(ax=axT)
+        axT.legend(loc="upper left", fontsize=9, title="Configuration")
+
+        n = len(util_arms)
+        width = 0.8 / n
+        offsets = (np.arange(n) - (n - 1) / 2) * width
+        x = np.arange(len(qids))
+        for i, a in enumerate(util_arms):
+            ub = util_by_qid[a]
+            pct = [100 * ub.loc[q, "utilization"] if ub.loc[q, "potential"] else 0 for q in qids]
+            ax.bar(x + offsets[i], pct, width, color=defaults.CONFIG_COLORS[a],
+                   label=defaults.CONFIG_LABELS[a])
+            ax.axhline(100 * arm_util[a][1], color=defaults.CONFIG_COLORS[a], linestyle="--",
+                       linewidth=1.2, alpha=0.95)
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"Q{int(q[1:])}" for q in qids])
+        ax.set_xlabel("Question")
+        ax.set_ylabel("Utilization (%)")
+        ax.set_ylim(0, 100)
+        ax.set_title("Skill utilization by question", fontsize=13)
+        ax.grid(True, axis="y", alpha=0.3)
+        sc.boxoff(ax=ax)
+        handles, labels = ax.get_legend_handles_labels()
+        handles.append(Line2D([], [], color="0.4", linestyle="--", linewidth=1.2))
+        labels.append("Mean utilization")
+        ax.legend(handles, labels, loc="upper left", fontsize=9, title="Configuration")
+        fig.tight_layout()
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"wrote {out}")
 
     # ── heatmap version: model (x) × question (y), with marginal bar charts ───────
     # A single value per (model, question) cell requires pooling arms, so all
@@ -247,6 +345,8 @@ def main():
     # the same common relevant set. The top bar chart sums utilization per model
     # and the right bar chart sums it per question (each = pooled realized/potential
     # over the marginalised axis), mirroring the two panels above.
+    if not MAKE_HEATMAP:
+        return
     plugin_cfgs = [c for c in defaults.PLUGIN_CONFIGS if runs_per_config.get(c, 0)]
     plugin_inv = inv[inv["config"].isin(plugin_cfgs)]
 

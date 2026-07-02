@@ -66,11 +66,11 @@ Answers were graded automatically by LLM-based marking agents rather than by han
 
 ### Performance scales with cost and skills
 
-Unsurprisingly, costlier models perform better. The cheapest models with single-turn ("chat") configurations, GPT-mini-chat (US$0.11) and Haiku-chat (US$0.21), also performed by far the worst (56.6% and 54.7%, respectively). The best-performing model, Opus-nudged (98.7%), was also among the most expensive (US$13.38). These results are shown in @fig-cost-score.
+Unsurprisingly, costlier models perform better. The cheapest models with single-turn ("chat") configurations, GPT-mini-chat (USD0.11) and Haiku-chat (USD0.21), also performed by far the worst (56.6% and 54.7%, respectively). The best-performing model, Opus-nudged (98.7%), was also among the most expensive (USD13.38). These results are shown in @fig-cost-score. Opus outperformed Sonnet on both performance and cost. 
 
 ```{figure} ../figures/fig1_cost_vs_score.png
 :label: fig-cost-score
-:width: 80%
+:width: 90%
 
 Performance as a function of model cost. Shape shows LLM type, and color shows model configuration. Individual runs are shown as small symbols; large symbols are the mean for that model-configuration combination. Not all models were run with all configurations.
 ```
@@ -83,7 +83,7 @@ Claude models include a configurable "effort" parameter; higher effort consumes 
 
 ```{figure} ../figures/fig2_effort_vs_score.png
 :label: fig-effort-score
-:width: 80%
+:width: 90%
 
 Performance as a function of effort for Sonnet and Opus models. Note that vertical bars show minimum and maximum scores, not confidence intervals.
 ```
@@ -94,14 +94,14 @@ No single factor accounted for a majority of marks lost. As shown in @fig-lost-m
 
 ```{figure} ../figures/fig3_lost_marks.png
 :label: fig-lost-marks
-:width: 80%
+:width: 90%
 
 Exam marks lost as a function of reason.
 ```
 
 ### The grading is robust to judge choice
 
-Because the answers are graded by LLMs, a natural concern is whether the results are an artifact of a particular judge. @fig-judge addresses this by plotting the Anthropic judge's score against the OpenAI judge's score for every graded answer. The two judges agree closely (Pearson $R^2$ = 0.96) with only a small mean difference (the Anthropic judge is higher by 2.2% on average). The high cross-provider correlation indicates that the scores reflect properties of the answers rather than the idiosyncrasies of a single grader, and gives us confidence in the comparisons above.
+Because the answers are graded by LLMs, a natural concern is whether the results are an artifact of a particular judge. @fig-judge-agreement addresses this by plotting the Anthropic judge's score against the OpenAI judge's score for every graded answer. The two judges agree closely (Pearson $R^2$ = 0.96) with only a small mean difference (the Anthropic judge is higher by 2.2% on average). The high cross-provider correlation indicates that the scores reflect properties of the answers rather than the idiosyncrasies of a single grader, and gives us confidence in the comparisons above.
 
 That said, the panel does reveal a small but consistent own-provider bias: each judge scores answers written by its own provider's models slightly more generously. On average, there was a preference of 2.1% for a judge towards its own work versus the other provider's. While much smaller than the variance in scores (in one extreme case, there was a 40-point gap between the Anthropic and OpenAI judges' scores on the same exame), it is still notable since even with a rigorous and explicit marking schema, it shows that a model's "personal" bias is still present.
 
@@ -116,11 +116,11 @@ That said, the panel does reveal a small but consistent own-provider bias: each 
 
 TBC
 
-```{figure} ../figures/fig5_skill_utilization_heatmap.png
+```{figure} ../figures/fig5_skill_utilization.png
 :label: fig-skill-utilization
-:width: 100%
+:width: 90%
 
-TBC
+Utilization of Starsim-AI skills for each question in the exam.
 ```
 
 
