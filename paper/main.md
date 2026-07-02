@@ -40,7 +40,7 @@ In addition, there is a sixth exam question (innocuously labeled "Miscellaneous"
 
 The exam is subdivided into roughly 30 individually marked sub-questions worth 300 marks in total, and is designed to take a skilled human approximately three hours. The exam is open-ended and code-centric: most sub-questions require the test-taker to write runnable Starsim code, produce figures, and explain the resulting dynamics in prose, with marks awarded via a detailed marking scheme. Questions span the difficulty range from simple recall ("describe what Starsim is and does") to substantial modeling tasks (an example of which is shown in @fig-exam-question).
 
-```{figure} ../figures/fig0_exam_question.png
+```{figure} ./figures/fig0_exam_question.png
 :label: fig-exam-question
 :width: 80%
 
@@ -67,7 +67,7 @@ Answers were graded automatically by LLM-based marking agents rather than by han
 
 Unsurprisingly, costlier models perform better. The cheapest models with single-turn ("chat") configurations, GPT-mini-chat (USD0.11) and Haiku-chat (USD0.21), also performed by far the worst (56.6% and 54.7%, respectively). The best-performing model, Opus-nudged (98.7%), was also among the most expensive (USD13.38). These results are shown in @fig-cost-score. Opus outperformed Sonnet on both performance and cost. 
 
-```{figure} ../figures/fig1_cost_vs_score.png
+```{figure} ./figures/fig1_cost_vs_score.png
 :label: fig-cost-score
 :width: 90%
 
@@ -80,7 +80,7 @@ Since skills tended to be evoked relatively infrequently without nudging (see be
 
 Claude models include a configurable "effort" parameter; higher effort consumes more tokens but is supposed to produce better results. As shown in @fig-effort-score, performance saturated above medium effort (high and extra high effort levels were also run for a subset of trials, which also showed no further improvement; results not shown). Interestingly, skills (with nudging) improved performance in both the lowest-performance case (Sonnet-low, 92.0→95.1%) and the highest-performance cases (Opus-high, 98.3→99.4%) cases, but less in moderate-performance cases (Sonnet-medium, 96.7→96.1%; Opus-low 97.4→97.4%).
 
-```{figure} ../figures/fig2_effort_vs_score.png
+```{figure} ./figures/fig2_effort_vs_score.png
 :label: fig-effort-score
 :width: 90%
 
@@ -91,7 +91,7 @@ Performance as a function of effort for Sonnet and Opus models. Note that vertic
 
 No single factor accounted for a majority of marks lost. As shown in @fig-lost-marks, marks were lost approximately equally due to the answer being (a) incorrect, (b) omitted, or (c) for a different reason. Interestingly, the primary improvement in marks was due to a reduction in the number of omitted answers, rather than incorrect answers. This suggests that skills can be helpful in prompting the LLM to bring the solution to completion when it may have otherwise become stuck.
 
-```{figure} ../figures/fig3_lost_marks.png
+```{figure} ./figures/fig3_lost_marks.png
 :label: fig-lost-marks
 :width: 90%
 
@@ -104,7 +104,7 @@ Because the answers are marked by LLMs, a natural concern is whether the results
 
 That said, the panel does reveal a small but consistent own-provider bias: each judge scores answers written by its own provider's models slightly more generously. On average, there was a preference of 2.1% for a judge towards its own work versus the other provider's. While much smaller than the variance in scores (in one extreme case, there was a 40-point gap between the Anthropic and OpenAI judges' scores on the same exame), it is still notable since even with a rigorous and explicit marking schema, it shows that a model's "personal" bias is still present.
 
-```{figure} ../figures/fig4_judge_agreement.png
+```{figure} ./figures/fig4_judge_agreement.png
 :label: fig-judge-agreement
 :width: 100%
 
@@ -119,7 +119,7 @@ In order to quantify skill utilization, we logged every time any agent invoked a
 
 As shown in @fig-skill-utilization, without nudging, agents invoked skills only 7.8% of the possible times they could have. This accounts for the relatively small performance gain provided by simply including skills. When provided with the additional prompt nudge, skill usage increased to 28.4% – a 3.6-fold increase. We attribute to skill under-use to agent overconfidence rather than an optimal efficiency tradeoff, since the nudged agents not only had better performance, they also sometimes had lower cost (see @fig-cost-score). Surprisingly, skill usage was relatively uniform across the questions, even though the difficulty of the questions varied markedly, and skills were of much more help for some questions than others.
 
-```{figure} ../figures/fig5_skill_utilization.png
+```{figure} ./figures/fig5_skill_utilization.png
 :label: fig-skill-utilization
 :width: 90%
 
