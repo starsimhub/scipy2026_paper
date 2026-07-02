@@ -120,8 +120,11 @@ def main():
 
     # Number of runs per config, taken from the manifests so a plugin-enabled run
     # that happened to invoke zero skills still counts in the denominator.
-    runs_per_config = Counter(
-        utils._read_yaml(d / "manifest.yaml").get("config") for d in utils.run_dirs()
+    manifests = [utils._read_yaml(d / "manifest.yaml") for d in utils.run_dirs()]
+    runs_per_config = Counter(m.get("config") for m in manifests)
+    # Runs per (config, model, effort) for the by-model/effort utilization panel.
+    runs_per_cme = Counter(
+        (m.get("config"), m.get("model"), m.get("effort")) for m in manifests
     )
 
     # Organic plugin runs: skills loaded, no prompt steer (configs "skills"/"full").
@@ -147,7 +150,37 @@ def main():
         nud_overall = nr / npot if npot else float("nan")
         arm_util["nudged"] = (nud_util, nud_overall, n_nudged_runs)
 
-    # ── utilization figure ──────────────────────────────────────────────────────
+    # ── utilization by model + effort (top panel) ───────────────────────────────
+    # Overall utilization split by model and effort, computed separately for the
+    # organic (skills) arm and the nudged arm, scored against the same common
+    # relevant set used per-question.
+    def _util_by_model_effort(arm_inv, cfgs):
+        out = {}  # (model, effort) -> overall utilization fraction
+        for (model, effort), sub in arm_inv.groupby(["model", "effort"]):
+            n_runs = sum(runs_per_cme.get((c, model, effort), 0) for c in cfgs)
+            if not n_runs:
+                continue
+            u = skill_utilization(sub, n_runs, relevant)
+            pot = u["potential"].sum()
+            out[(model, effort)] = u["realized"].sum() / pot if pot else float("nan")
+        return out
+
+    util_me = {
+        "skills": _util_by_model_effort(organic, set(organic_cfgs)),
+        "nudged": _util_by_model_effort(nudged, {"nudged"}),
+    }
+    util_me = {a: d for a, d in util_me.items() if d}
+    all_me = set().union(*util_me.values())
+    me_models = [m for m in defaults.MODEL_ORDER if any(k[0] == m for k in all_me)]
+    # (model, effort) groups present for either arm, in canonical order.
+    me_groups = [
+        (m, e)
+        for m in me_models
+        for e in defaults.EFFORT_ORDER
+        if (m, e) in all_me
+    ]
+
+    # ── utilization by question (bottom panel) ───────────────────────────────────
     # Grouped bars per arm (skills vs nudged).
     util_arms = [a for a in ("skills", "nudged") if a in arm_util]
     util_by_qid = {a: arm_util[a][0].set_index("qid") for a in util_arms}
@@ -155,7 +188,28 @@ def main():
     qids = [q for q in defaults.ALL_QIDS
             if any(util_by_qid[a].loc[q, "potential"] for a in util_arms)]
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, (axT, ax) = plt.subplots(2, 1, figsize=(9, 10))
+
+    # Top panel: grouped bars, x = (model, effort) group, one bar per arm.
+    me_arms = list(util_me)
+    na = len(me_arms)
+    wT = 0.8 / na
+    offT = (np.arange(na) - (na - 1) / 2) * wT
+    xT = np.arange(len(me_groups))
+    for i, a in enumerate(me_arms):
+        pct = [100 * util_me[a].get(g, np.nan) for g in me_groups]
+        axT.bar(xT + offT[i], pct, wT, color=defaults.CONFIG_COLORS[a],
+                label=defaults.CONFIG_LABELS[a])
+    axT.set_xticks(xT)
+    axT.set_xticklabels([f"{m}\n{e}" for m, e in me_groups])
+    axT.set_xlabel("Model / effort")
+    axT.set_ylabel("Utilization (%)")
+    axT.set_ylim(0, 100)
+    axT.set_title("Skill utilization by model and effort", fontsize=13)
+    axT.grid(True, axis="y", alpha=0.3)
+    sc.boxoff(ax=axT)
+    axT.legend(loc="upper left", fontsize=9, title="Configuration")
+
     n = len(util_arms)
     width = 0.8 / n
     offsets = (np.arange(n) - (n - 1) / 2) * width
@@ -173,7 +227,7 @@ def main():
     ax.set_xlabel("Question")
     ax.set_ylabel("Utilization (%)")
     ax.set_ylim(0, 100)
-    ax.set_title("Skill utilization", fontsize=13)
+    ax.set_title("Skill utilization by question", fontsize=13)
     ax.grid(True, axis="y", alpha=0.3)
     sc.boxoff(ax=ax)
     # Bar entries plus a single neutral entry for the per-arm dotted mean lines.
@@ -186,6 +240,86 @@ def main():
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
+
+    # ── heatmap version: model (x) × question (y), with marginal bar charts ───────
+    # A single value per (model, question) cell requires pooling arms, so all
+    # plugin-enabled runs (organic skills + nudged) are combined and scored against
+    # the same common relevant set. The top bar chart sums utilization per model
+    # and the right bar chart sums it per question (each = pooled realized/potential
+    # over the marginalised axis), mirroring the two panels above.
+    plugin_cfgs = [c for c in defaults.PLUGIN_CONFIGS if runs_per_config.get(c, 0)]
+    plugin_inv = inv[inv["config"].isin(plugin_cfgs)]
+
+    def _runs_for_model(model):
+        return sum(v for (c, m, _e), v in runs_per_cme.items()
+                   if c in plugin_cfgs and m == model)
+
+    hm_models = [m for m in defaults.MODEL_ORDER if (plugin_inv["model"] == m).any()]
+
+    # Per-question marginal (pooled over models) and the question set to show.
+    total_runs = sum(_runs_for_model(m) for m in hm_models)
+    q_util = skill_utilization(plugin_inv, total_runs, relevant).set_index("qid")
+    hm_qids = [q for q in defaults.ALL_QIDS if q_util.loc[q, "potential"]]
+
+    # Heatmap cells + per-model marginal.
+    Z = np.full((len(hm_qids), len(hm_models)), np.nan)
+    model_overall = {}
+    for j, model in enumerate(hm_models):
+        sub = plugin_inv[plugin_inv["model"] == model]
+        u = skill_utilization(sub, _runs_for_model(model), relevant).set_index("qid")
+        for i, q in enumerate(hm_qids):
+            if u.loc[q, "potential"]:
+                Z[i, j] = 100 * u.loc[q, "utilization"]
+        pot = u["potential"].sum()
+        model_overall[model] = 100 * u["realized"].sum() / pot if pot else np.nan
+
+    q_pct = [100 * q_util.loc[q, "utilization"] for q in hm_qids]
+
+    fig2, axes = plt.subplots(
+        2, 2, figsize=(8, 7),
+        gridspec_kw=dict(width_ratios=[4, 1], height_ratios=[1, 4],
+                         wspace=0.05, hspace=0.05),
+    )
+    ax_top, ax_corner = axes[0]
+    ax_heat, ax_right = axes[1]
+    ax_corner.axis("off")
+
+    im = ax_heat.imshow(Z, aspect="auto", cmap="viridis", vmin=0,
+                        vmax=np.nanmax(Z) if np.isfinite(Z).any() else 1)
+    ax_heat.set_xticks(range(len(hm_models)))
+    ax_heat.set_xticklabels(hm_models)
+    ax_heat.set_yticks(range(len(hm_qids)))
+    ax_heat.set_yticklabels([f"Q{int(q[1:])}" for q in hm_qids])
+    ax_heat.set_xlabel("Model")
+    ax_heat.set_ylabel("Question")
+    # Annotate each cell with its utilization %.
+    for i in range(len(hm_qids)):
+        for j in range(len(hm_models)):
+            if np.isfinite(Z[i, j]):
+                ax_heat.text(j, i, f"{Z[i, j]:.0f}", ha="center", va="center",
+                             fontsize=8, color="white" if Z[i, j] < 0.6 * np.nanmax(Z) else "black")
+
+    # Top marginal: per-model overall utilization, aligned to heatmap columns.
+    ax_top.bar(range(len(hm_models)), [model_overall[m] for m in hm_models],
+               width=0.8, color="0.5")
+    ax_top.set_xlim(ax_heat.get_xlim())
+    ax_top.set_xticks([])
+    ax_top.set_ylabel("Util. (%)", fontsize=9)
+    sc.boxoff(ax=ax_top)
+
+    # Right marginal: per-question overall utilization, aligned to heatmap rows.
+    ax_right.barh(range(len(hm_qids)), q_pct, height=0.8, color="0.5")
+    ax_right.set_ylim(ax_heat.get_ylim())
+    ax_right.set_yticks([])
+    ax_right.set_xlabel("Util. (%)", fontsize=9)
+    sc.boxoff(ax=ax_right)
+
+    fig2.colorbar(im, ax=ax_corner, fraction=0.6, aspect=10, label="Utilization (%)")
+    fig2.suptitle("Skill utilization by model and question", fontsize=13)
+    out2 = utils.RESULTS_DIR / "fig5_skill_utilization_heatmap.png"
+    fig2.savefig(out2, dpi=150, bbox_inches="tight")
+    plt.close(fig2)
+    print(f"wrote {out2}")
 
 
 if __name__ == "__main__":
